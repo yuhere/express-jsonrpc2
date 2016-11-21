@@ -1,0 +1,240 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title> JSONRPC – Debuger </title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" href="style.css" type="text/css"/>
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="jquery.py.jsonrpc.js"></script>
+    <script type="text/javascript" src="pyerp.js"></script>
+    <script type="text/javascript" src="ta-resizer.js"></script>
+    <script type="text/javascript">
+        <!--
+        var SUBFOLDER_INDENT = 20;
+        var RPC_NS_SEPARATOR = '.';
+        window.build_rpc_tv = function () {
+            $("#methodList table.dirlist tbody").empty();
+            var rpc = jQuery.Py.jsonrpc('/rpc');
+            var listMethods;
+            try {
+                listMethods = rpc.call('system.listMethods');
+            } catch (e) {
+                alert(e);
+            }
+            jQuery.each(listMethods, function (i, method) {
+                mkRPCTVNode(method, 0);
+            });
+        }
+        window.findNodeTR = function (p_ns_arr) {
+            var nodeTR;
+            $("#methodList table.dirlist tbody").children('tr').each(function (idx, tr_ele) {
+                var p_arr = $.grep($(tr_ele).attr("class").split(" "), function (c) {
+                    return c.match(/^r_\w+$/)
+                });
+                var fp_arr = $.map(p_arr, function (value) {
+                    return value.substring(2)
+                });  // remove 'r_'
+                if (p_ns_arr.toString() == fp_arr.toString()) {
+                    nodeTR = $(tr_ele);
+                }
+            });
+            return nodeTR;
+        }
+        window.getChildNodeTR = function (parent_tr) {
+            var p_arr = $.grep(parent_tr.attr("class").split(" "), function (c) {
+                return c.match(/^r_\w+$/)
+            });
+            var child_nodes = $($.grep(parent_tr.siblings('tr'), function (ele) {
+                var s_arr = $.grep($(ele).attr("class").split(" "), function (c) {
+                    return c.match(/^r_\w+$/)
+                });
+                return (p_arr.toString() == s_arr.slice(0, p_arr.length).toString());
+            }));
+            return child_nodes;
+        }
+        window.mkRPCTVNode = function (fullMethodName, level) {
+            var nameSpaceArr = fullMethodName.split(RPC_NS_SEPARATOR);
+            if (nameSpaceArr.length == 1) {    // root namespcae
+                return addRPCTVNode(null, fullMethodName, fullMethodName, level == 0);
+            } else {                           // sub namespace
+                var parent_tr = findNodeTR(nameSpaceArr.slice(0, -1));
+                if (!parent_tr || parent_tr.length == 0) {
+                    var parentNS = (nameSpaceArr.slice(0, -1)).join(RPC_NS_SEPARATOR);
+                    parent_tr = mkRPCTVNode(parentNS, level + 1);
+                }
+                return addRPCTVNode(parent_tr, fullMethodName, nameSpaceArr.slice(-1)[0], level == 0);
+            }
+        };
+
+        window.doTest = function () {
+            if ($('#methodName').text() == "") {
+            } else {
+                var rpc = jQuery.Py.jsonrpc('/rpc');
+                try {
+                    var mtds0 = rpc.call($('#methodName').text(), JSON.parse($('#methodTestInput').val()));
+                    console.log(mtds0);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        window.fetchDetail = function (fullMethodName) {
+            var rpc = jQuery.Py.jsonrpc('/rpc'); // 'http://localhost:8003/pyerp/rpc'
+            try {
+                var mtds0 = rpc.call('system.methodHelp', [fullMethodName]);
+                $('#methodHelp').text(mtds0);
+                var mtds1 = rpc.call('system.methodSignature', [fullMethodName]);
+                $('#methodSignature').text(mtds1.join("\n"));
+                //
+                var pTypes = mtds1[0].split(",");
+                var sParamStr = "";
+                for (var pIdx = 1; pIdx < pTypes.length; pIdx++) {
+                    if (pIdx > 1) {
+                        sParamStr = sParamStr + ", ";
+                    }
+                    if (pTypes[pIdx] == "string") {
+                        sParamStr = sParamStr + "\"" + pTypes[pIdx] + "\"";
+                    } else if (pTypes[pIdx] == "array") {
+                        sParamStr = sParamStr + "[\"" + pTypes[pIdx] + "\"]";
+                    } else if (pTypes[pIdx] == "struct") {
+                        sParamStr = sParamStr + "{\"KEY\" : \"VALUE\"}";
+                    } else {
+                        sParamStr = sParamStr + "" + pTypes[pIdx] + "";
+                    }
+                }
+                $('#methodName').text(fullMethodName);
+                $('#methodTestInput').val(sParamStr);
+            } catch (e) {
+                alert(e);
+            }
+        }
+        window.togglePkg = function (expander) {
+            var tr = expander.parents("tr:first");
+            var child_tr = getChildNodeTR(tr);
+            if (tr.hasClass("expanded")) { // then *fold*
+                tr.removeClass("expanded").addClass("collapsed");
+                child_tr.hide();
+                expander.attr("title", "再展开目录");
+            } else if (tr.hasClass("collapsed")) { // then *expand*
+                tr.removeClass("collapsed").addClass("expanded");
+                child_tr.show();
+                // Note that the above will show all the already fetched subtrees,
+                // so we have to fold again the folders which were already collapsed.
+                child_tr.each(function () {
+                    if ($(this).hasClass('collapsed')) {
+                        getChildNodeTR($(this)).not($(this)).hide();
+                    }
+                });
+                expander.attr("title", "收起目录");
+            }
+        }
+
+        window.addRPCTVNode = function (parent_tr, fullNS, nodeNS, isLeaf) {
+            var new_tr = $('<tr class="odd">' +
+                    ' <td class="name"> ' +
+                    '  <a></a>' +
+                    ' </td>' +
+                    '</tr>');
+            // 加入到parent_tr最后一个节点
+            if (!parent_tr) $("#methodList table.dirlist tbody").append(new_tr);
+            else {
+                var childs = getChildNodeTR(parent_tr);
+                if (childs.length == 0) parent_tr.after(new_tr);
+                else childs.last().after(new_tr);
+            }
+            // add the expander icon
+            var a = new_tr.find("td a").text(nodeNS);
+            // 叶子节点
+            if (isLeaf) {
+                a.addClass("file")
+                        .attr("title", "查看详细信息")
+                        .attr("href", "javascript:void(0);")
+                        .click(function () {
+                            fetchDetail(fullNS)
+                        });
+            } else {
+                new_tr.addClass("collapsed");
+                var expander = $('<span class="expander">&nbsp;</span>')
+                        .attr("title", "展开目录")
+                        .click(function () {
+                            togglePkg($(this))
+                        });
+                a.addClass("dir").wrap('<div></div>').before(expander);
+            }
+            //
+            if (parent_tr) {
+                var parent_td = parent_tr.find("td:first");
+                var depth = parseFloat(parent_td.css("padding-left").replace(/^(\d*\.\d*).*$/, "$1")) + SUBFOLDER_INDENT;
+                var p_arr = $.grep(parent_tr.attr("class").split(" "),
+                        function (c) {
+                            return c.match(/^r_\w+$/)
+                        });
+                new_tr.addClass(p_arr.join(" "));
+                new_tr.find("td:first").css("padding-left", depth + "px");
+                new_tr.hide()
+            }
+            new_tr.addClass('r_' + nodeNS);
+            return new_tr;
+        }
+
+        jQuery(document).ready(function ($) {
+            build_rpc_tv();
+        });
+
+        -->
+    </script>
+
+</head>
+<body>
+<div id="wrapper">
+    <div id="mainnav" class="nav">
+        <ul>
+            <li class="first"><a href="javascript:void(0);">调试</a></li>
+            <li><a href="javascript:void(0);">服务器端日志</a></li>
+            <li class="last"><a href="javascript:void(0);">关于</a></li>
+        </ul>
+    </div>
+    <div id="main">
+        <div id="ctxtnav" class="nav">
+            <h2>Context Navigation</h2>
+            <hr/>
+        </div>
+
+        <div id="content" class="wiki">
+            <div id="debug_tool">
+                <div id="methodList" class="rpcview">
+                    <fieldset class="rpcfield">
+                        <legend><a href="javascript:build_rpc_tv();void(0);" title="点击进行刷新">可用的远程方法：</a></legend>
+                        <table class="listing dirlist" id="dirlist">
+                            <tbody></tbody>
+                        </table>
+                    </fieldset>
+                </div> <!-- end methodList -->
+                <div id="tabcontent" class="rpcdview">
+                    <fieldset class="rpcfield">
+                        <legend>帮助</legend>
+                        <pre id="methodHelp" class="help"></pre>
+                    </fieldset>
+                    <fieldset class="rpcfield">
+                        <legend>签名</legend>
+                        <pre id="methodSignature" class="help"></pre>
+                    </fieldset>
+                    <fieldset class="rpcfield">
+                        <legend>测试 <span id="methodName"></span></legend>
+                        <form id="accountsconfig" class="mod" method="post">
+                            <p><textarea id="methodTestInput" class="rpcinput ta-resizable" name="text" cols="80"
+                                         rows="3"></textarea></p>
+                            <div class="buttons">
+                                <input type="button" name="save" value="执行" onclick="javascript:doTest();"/>
+                            </div>
+                        </form>
+                    </fieldset>
+                </div> <!-- end tabcontent -->
+            </div> <!-- end debug_tool -->
+        </div> <!-- end content -->
+    </div> <!-- end main -->
+
+</div>
+</body>
+</html>
