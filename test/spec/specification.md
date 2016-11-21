@@ -73,8 +73,15 @@ The Server MUST reply with the same value in the Response object if included. Th
 
 A Notification is a Request object without an "id" member. A Request object that is a Notification signifies the Client's lack of interest in the corresponding Response object, and as such no Response object needs to be returned to the client. The Server MUST NOT reply to a Notification, including those that are within a batch request.
 
+>
 > `通知`是请求对象中不包含'id'字段. 客户端不关心相应, 应立即返回。 服务器端必须不作出相应。
-> 未实现。
+> 如果下边的Examples是正确的, 说明 服务器端 先检查参数合法性, 后断定是否是 Notification。
+> rpc call with invalid Request object:
+> --> {"jsonrpc": "2.0", "method": 1, "params": "bar"}
+> <-- {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
+> 这不是一个notification call吗???
+>
+
 
 ### Parameter Structures
 
@@ -197,6 +204,8 @@ If the batch rpc call itself fails to be recognized as an valid JSON or as an Ar
 --> {"jsonrpc": "2.0", "method": 1, "params": "bar"}
 <-- {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
 ```
+
+> 这不是一个notification call吗???
 
 ### rpc call Batch, invalid JSON:
 

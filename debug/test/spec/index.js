@@ -9,4 +9,18 @@ module.exports = function (_repository) {
   }, function (a, b) {
     return a - b;
   });
+  _repository.regsiter({
+    namespace: 'update',
+    doc: '',
+    sign: [PropTypes.number, PropTypes.number, PropTypes.number, PropTypes.number, PropTypes.number, PropTypes.number]
+  }, function (a, b, c, d, e) {
+    return a + b + c + d + e;
+  });
+  _repository.regsiter({
+    namespace: 'sum',
+    doc: '',
+    sign: [PropTypes.number, PropTypes.number, PropTypes.number, PropTypes.number]
+  }, function (a, b, c) {
+    return a + b + c;
+  });
 };

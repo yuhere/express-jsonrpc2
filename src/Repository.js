@@ -1,4 +1,5 @@
-const utils = require('./utils')
+const Promise = require('bluebird');
+const utils = require('./utils');
 const PropTypes = require('./PropTypes');
 const JsonRpcError = utils.RpcError;
 const TypeError = utils.TypeError;
@@ -87,18 +88,21 @@ module.exports = function Repository() {
     }
   };
 
-  var _spec_check = _catch_errors(function (input) {
-    var rpc_input_checker = PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,   // 允许 null, 但必须被设置
-      jsonrpc: PropTypes.oneOf([utils.JSON_RPC_VERSION]).isRequiredNotNull,  // 2.0
-      method: PropTypes.string.isRequiredNotNull,
-      params: PropTypes.oneOfType([PropTypes.object, PropTypes.array]).isRequiredNotNull
-    }).isRequiredNotNull;
-    var rpc_input_check_result = rpc_input_checker({input: input}, 'input', 'JSONRPC.input', 'JSONRPC.input');
-    if (rpc_input_check_result !== null) {
-      return new JsonRpcError(-32600, "Invalid Request", rpc_input_check_result);
-    }
-  });
+  var _rpc_spec_check = function (input) {
+    return new Promise(function (resolve, reject) {
+      var rpc_input_checker = PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),   // 允许 null, 但必须被设置
+        jsonrpc: PropTypes.oneOf([utils.JSON_RPC_VERSION]).isRequiredNotNull,  // 2.0
+        method: PropTypes.string.isRequiredNotNull,
+        params: PropTypes.oneOfType([PropTypes.object, PropTypes.array])
+      }).isRequiredNotNull;
+      var rpc_input_check_result = _catch_errors(rpc_input_checker)({input: input}, 'input', 'JSONRPC.input', 'JSONRPC.input');
+      if (rpc_input_check_result !== null) {
+        return reject(new JsonRpcError(-32600, "Invalid Request", rpc_input_check_result));
+      }
+      return resolve(input);
+    });
+  };
 
   /**
    * 根据 `namespace` 符合条件rpc方法。
@@ -108,69 +112,98 @@ module.exports = function Repository() {
    * @returns {*}
    * @private
    */
-  var _lookup = _catch_errors(function (_method) {
-    for (var i = 0; i < _repository.length; i++) {
-      var _rpc_method = _repository[i];
-      if (_method === _rpc_method.namespace) { // 函数名 不匹配的
-        return _rpc_method;
+  var _lookup = function (_method) {
+    var __lookup = _catch_errors(function (_method) {
+      for (var i = 0; i < _repository.length; i++) {
+        var _rpc_method = _repository[i];
+        if (_method === _rpc_method.namespace) { // 函数名 不匹配的
+          return _rpc_method;
+        }
       }
-    }
-    return new JsonRpcError(-32601, "Method not found.", JSON.stringify(_method));
-  });
+      return new JsonRpcError(-32601, "Method not found", JSON.stringify(_method))
+    });
+    //
+    return new Promise(function (resolve, reject) {
+      var rpc_method = __lookup(_method);
+      if (rpc_method instanceof JsonRpcError) {
+        // console.error(-32603, "Internal JSON-RPC error lookup method", rpc_method);
+        return reject(rpc_method);
+      }
+      if (rpc_method instanceof Error) {
+        // console.error(-32603, "Internal JSON-RPC error lookup method", rpc_method);
+        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error lookup method", rpc_method));
+      }
+      return resolve(rpc_method);
+    });
+  };
 
   /**
    * 根据 参数的定义 检查 & 转换(注入)参数.
    */
-  var _convert = _catch_errors(function (injectableContext, params, rpc_method) {
-    var _typeof_params = utils.getPropType(params);
-    var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params).length;
-    //
-    if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // 命名方式调用, 但RPC函数不支持命名调用
-      return new JsonRpcError(-32602, "Invalid params.", 'Invalid invoke style `named style` suppled to `' + rpc_method.namespace + '`, excepted `positional style`.');
-    }
-    //
-    if (_typeof_params === 'array' && paramsLength !== rpc_method.indexedParams.length) {   // parameter count not match
-      return new JsonRpcError(-32602, "Invalid params.", 'Invalid parameters count. ' + ('`' + paramsLength + '` parameter(s) supplied to `' + rpc_method.namespace + '`, expected ') + ('`' + rpc_method.indexedParams.length + '` parameter(s).'));
-    }
-    // 复制 & 注入 传入的参数
-    var convertedParams = new Array(rpc_method.paramsCount);
-    // 注入 定义的参数
-    for (var i = 0; i < rpc_method.injectableParams.length; i++) {
-      var injectableParam = rpc_method.injectableParams[i];
-      var propType = injectableParam[0];
-      var _prop_type_check_result = PropTypes.any.isRequired(injectableContext, propType.injectable, 'injectableContext', 'injectableContext[' + propType.injectable + ']');
-      if (_prop_type_check_result instanceof TypeError) {  // TODO when obtain undefined, how to process? ignore or be an error
-        console.error(-32602, "Invalid params.", _prop_type_check_result);
-        // return new JsonRpcError(-32602, "Invalid params.", _prop_type_check_result);
+  var _convert = function (input_params, injectable, rpc_method) {
+    var __convert = _catch_errors(function (injectableContext, params, rpc_method) {
+      var _typeof_params = utils.getPropType(params);
+      var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params).length;
+      //
+      if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // 命名方式调用, 但RPC函数不支持命名调用
+        return new JsonRpcError(-32602, "Invalid params", 'Invalid invoke style `named style` suppled to `' + rpc_method.namespace + '`, excepted `positional style`.');
       }
-      convertedParams[injectableParam[1]] = injectableContext[propType.injectable];
-    }
-    if (_typeof_params === 'array') {
-      for (var i = 0; i < rpc_method.indexedParams.length; i++) {
-        var indexedParam = rpc_method.indexedParams[i];
-        var propType = indexedParam[0];
-        var _prop_type_check_result = propType(params, i, rpc_method.namespace, 'params[' + i + ']');
-        if (_prop_type_check_result instanceof TypeError) {   // not matched.
-          return new JsonRpcError(-32602, "Invalid params.", _prop_type_check_result);
+      //
+      if (_typeof_params === 'array' && paramsLength !== rpc_method.indexedParams.length) {   // parameter count not match
+        return new JsonRpcError(-32602, "Invalid params", 'Invalid parameters count. ' + ('`' + paramsLength + '` parameter(s) supplied to `' + rpc_method.namespace + '`, expected ') + ('`' + rpc_method.indexedParams.length + '` parameter(s).'));
+      }
+      // 复制 & 注入 传入的参数
+      var convertedParams = new Array(rpc_method.paramsCount);
+      // 注入 定义的参数
+      for (var i = 0; i < rpc_method.injectableParams.length; i++) {
+        var injectableParam = rpc_method.injectableParams[i];
+        var propType = injectableParam[0];
+        var _prop_type_check_result = PropTypes.any.isRequired(injectableContext, propType.injectable, 'injectableContext', 'injectableContext[' + propType.injectable + ']');
+        if (_prop_type_check_result instanceof TypeError) {  // TODO when obtain undefined, how to process? ignore or be an error
+          console.error(-32602, "Invalid params", _prop_type_check_result);
+          // return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
         }
-        convertedParams[indexedParam[1]] = params[i];
+        convertedParams[injectableParam[1]] = injectableContext[propType.injectable];
       }
-    } else if (_typeof_params === 'object') {
-      // console.log('===', _rpc_method.namedParams);
-      for (var i = 0; i < rpc_method.namedParams.length; i++) {
-        var namedParam = rpc_method.namedParams[i];
-        var propType = namedParam[0];
-        var _prop_type_check_result = propType(params, propType.typeProps.naming, rpc_method.namespace, 'params[' + JSON.stringify(propType.typeProps.naming) + ']');
-        if (_prop_type_check_result instanceof TypeError) {   // not matched.
-          return new JsonRpcError(-32602, "Invalid params.", _prop_type_check_result);
+      if (_typeof_params === 'array') {
+        for (var j = 0; j < rpc_method.indexedParams.length; j++) {
+          var indexedParam = rpc_method.indexedParams[j];
+          var propType = indexedParam[0];
+          var _prop_type_check_result = propType(params, j, rpc_method.namespace, 'params[' + j + ']');
+          if (_prop_type_check_result instanceof TypeError) {   // not matched.
+            return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
+          }
+          convertedParams[indexedParam[1]] = params[j];
         }
-        // console.log('.....', namedParam[1], namedParam[0].typeProps.naming);
-        convertedParams[namedParam[1]] = params[namedParam[0].typeProps.naming];
+      } else if (_typeof_params === 'object') {
+        // console.log('===', _rpc_method.namedParams);
+        for (var k = 0; k < rpc_method.namedParams.length; k++) {
+          var namedParam = rpc_method.namedParams[k];
+          var propType = namedParam[0];
+          var _prop_type_check_result = propType(params, propType.typeProps.naming, rpc_method.namespace, 'params[' + JSON.stringify(propType.typeProps.naming) + ']');
+          if (_prop_type_check_result instanceof TypeError) {   // not matched.
+            return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
+          }
+          // console.log('.....', namedParam[1], namedParam[0].typeProps.naming);
+          convertedParams[namedParam[1]] = params[namedParam[0].typeProps.naming];
+        }
       }
-    }
 
-    return convertedParams;
-  });
+      return convertedParams;
+    });
+    //
+    return new Promise(function (resolve, reject) {
+      var params = __convert(injectable, input_params, rpc_method);
+      if (params instanceof JsonRpcError) {
+        return reject(params)
+      }
+      if (params instanceof Error) {
+        console.error(-32603, "Internal JSON-RPC error when convert params", params);
+        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when convert params", params));
+      }
+      return resolve(params);
+    });
+  };
 
   /**
    *
@@ -179,39 +212,13 @@ module.exports = function Repository() {
    * @returns {Promise|Promise<T>}
    * @private
    */
-  var __invoke = function (input, injectable) {
+  var ___invoke = function (rpc_method, params) {
     return new Promise(function (resolve, reject) {
-      var spec_check_result = _spec_check(input);
-      if (spec_check_result instanceof JsonRpcError) {
-        return reject(spec_check_result);
-      }
-      if (spec_check_result instanceof Error) {
-        console.error(-32603, "Internal JSON-RPC error spec_check method.", spec_check_result);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error spec_check method.", spec_check_result));
-      }
-      //
-      var rpc_method = _lookup(input.method);
-      if (rpc_method instanceof JsonRpcError) {
-        return reject(rpc_method)
-      }
-      if (rpc_method instanceof Error) {
-        console.error(-32603, "Internal JSON-RPC error lookup method.", rpc_method);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error lookup method.", rpc_method));
-      }
-      //
-      var params = _convert(injectable, input.params, rpc_method);
-      if (params instanceof JsonRpcError) {
-        return reject(params)
-      }
-      if (params instanceof Error) {
-        console.error(-32603, "Internal JSON-RPC error when convert params.", params);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when convert params.", params));
-      }
       // apply the function 实际调用 引发的错误. 未知的错误.
       var result = _catch_errors(rpc_method.func, rpc_method).apply(null, params);
       if (result instanceof Error) {
-        console.error(-32603, "Internal JSON-RPC error when invoke method.", result)
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method.", result));
+        console.error(-32603, "Internal JSON-RPC error when invoke method", result);
+        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", result));
       }
       // return the result
       if (result && typeof result.then === 'function') { // thenable
@@ -220,6 +227,29 @@ module.exports = function Repository() {
         return resolve(result); // normal function call
       }
     })
+  };
+
+  var __invoke = function (input, injectable) {
+    return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
+      var _next = _lookup(input.method).then(function (rpc_method) {
+        return _convert(input.params, injectable, rpc_method).then(function (params) {
+          return ___invoke(rpc_method, params).then(function (result) {
+            return {
+              jsonrpc: utils.JSON_RPC_VERSION,
+              id: input.id,
+              result: result === undefined ? null : result  // TODO SPEC要求 成功时必须, 然而, 返回null和undefined(不必须)的意义可能不同, null代表函数返回值是null, undefined代表函数没有返回值?
+            }
+          });
+        })
+      });
+      //
+      if (input.id === undefined || input.id === null) {
+        // when input.id === undefined or null, that is a notification call.
+        // ignore the result(output), resolve direction(not wait invoke done).
+      } else {
+        return _next;
+      }
+    }));
   };
 
   /**
@@ -231,16 +261,12 @@ module.exports = function Repository() {
    */
   var __wrap_output = function (input, invoke_thenable) {
     return new Promise(function (resolve, reject) {
-      invoke_thenable.then(function (result) {
-        return resolve({
-          jsonrpc: utils.JSON_RPC_VERSION,
-          id: input.id,
-          result: result === undefined ? null : result  // TODO SPEC要求 成功时必须, 然而, 返回null和undefined(不必须)的意义可能不同, null代表函数返回值是null, undefined代表函数没有返回值?
-        })
+      invoke_thenable.then(function (output) {
+        return resolve(output)
       }).catch(function (error) {
         return reject({
           jsonrpc: utils.JSON_RPC_VERSION,
-          id: input.id || null,
+          id: input && input.id || null,
           error: error
         })
       })
@@ -250,12 +276,37 @@ module.exports = function Repository() {
   /**
    *
    *
+   * resolve(undefined) when notification call.
+   * resolve or reject `spec` value when normal call.
    * @param input
    * @returns {Promise<T>|Promise}
    * @private
    */
   var _invoke = function (input, injectable) {
-    return __wrap_output(input, __invoke(input, injectable));
+    if (Array.isArray(input)) {
+      // {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
+      // __wrap_output()
+      // var output = [];
+      if (input.length === 0) {
+        return __wrap_output(undefined,
+          Promise.reject(new JsonRpcError(-32600, "Invalid Request", "RPC call with an empty array.")));
+      }
+      //
+      return Promise.mapSeries(input, function (item, index) {
+        return new Promise(function (resolve, reject) {
+          __invoke(item, injectable).then(resolve, function (error) {
+            resolve(error);
+          });
+        });
+      }, 0).then(function (res) {
+        // console.log('......output...', res);
+        return res;
+      });
+    } else {
+      return __invoke(input, injectable);
+    }
+
+
   };
 
   /**

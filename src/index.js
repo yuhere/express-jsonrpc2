@@ -69,6 +69,7 @@ function _mk_rpc_dispatch(rpc_repository) {
         }
       };
       return rpc_repository.invoke(input, injectable).then(function (output) {
+        // console.log('==' + output + 'bbb');
         return res.status(200).json(output).end();
       })
     }).catch(function (output) {
