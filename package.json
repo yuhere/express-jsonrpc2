@@ -16,7 +16,7 @@
   "author": "yuhere@gmail.com",
   "repository": {
     "type": "git",
-    "url": "TODO github..."
+    "url": "https://github.com/yuhere/express-jsonrpc2"
   },
   "devDependencies": {
     "mocha": "3.1.2",
