@@ -3,6 +3,10 @@
   "version": "2.0.1",
   "private": true,
   "description": "JSON-RPC for express.",
+  "engines": {
+    "node": "^4.4.5",
+    "npm": "^3.10.9"
+  },
   "scripts": {
     "coverage": "istanbul cover _mocha",
     "test": "mocha",
