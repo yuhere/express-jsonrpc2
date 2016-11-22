@@ -101,6 +101,7 @@ function JsonRPC(_repository) {
 //
 JsonRPC.Repository = Repository;
 JsonRPC.PropTypes = PropTypes;
+JsonRPC.JsonRpcError = JsonRpcError;
 
 
 module.exports = JsonRPC;

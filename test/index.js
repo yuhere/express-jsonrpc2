@@ -1,6 +1,6 @@
 // require("should");
 
-// require('./unit');
+require('./unit');
 
 require('./spec');
 

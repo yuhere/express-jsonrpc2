@@ -8,10 +8,11 @@ const TypeError = utils.TypeError;
 const PropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 function createVoidTypeChecker() {
-  function validate(props, propName, componentName, propFullName, secret) {
+  function validate(props, propName, componentName, propFullName) {
     var propValue = props[propName];
     if (propValue !== undefined) {
-      return new TypeError('Invalid parameter `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected ') + ('`' + undefined + '`.'));
+      var preciseType = utils.getPreciseType(propValue);
+      return new TypeError('Invalid parameter `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + undefined + '`.'));
     }
     return null;
   }
@@ -138,7 +139,7 @@ function createChainableTypeChecker(validate) {
   chainedCheckType.naming = createNamingTypeChecker(chainedCheckType);
   //
   chainedCheckType.isRequired = createIsRequiredTypeChecker(createTypeChecker(validate, true, false));
-  chainedCheckType.isRequiredNotNull = createIsRequiredTypeChecker(createTypeChecker(validate, true, true));
+  chainedCheckType.isRequiredNotNull = createIsRequiredNotNullTypeChecker(createTypeChecker(validate, true, true));
 
   return chainedCheckType;
 }
@@ -390,7 +391,8 @@ var PropTypes = {
   objectOf: createObjectOfTypeChecker,
   oneOf: createEnumTypeChecker,
   oneOfType: createUnionTypeChecker,
-  shape: createShapeTypeChecker
+  shape: createShapeTypeChecker,
+  TypeError: TypeError
 };
 
 module.exports = PropTypes;
