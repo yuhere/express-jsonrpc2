@@ -1,7 +1,7 @@
 {
   "name": "express-jsonrpc2",
-  "version": "2.0.1",
-  "private": true,
+  "version": "2.0.3",
+  "private": false,
   "description": "JSON-RPC for express.",
   "engines": {
     "node": "^4.4.5",
@@ -9,10 +9,16 @@
   },
   "scripts": {
     "coverage": "istanbul cover _mocha",
-    "test": "mocha",
+    "dist": "",
+    "test": "mocha --reporter spec",
     "deploy": "echo \"TOOD: no specified\" && exit 1",
     "start": "node debug/index.js"
   },
+  "main": "src/index.js",
+  "files": [
+    "src",
+    "README.md"
+  ],
   "author": "yuhere@gmail.com",
   "repository": {
     "type": "git",
