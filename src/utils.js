@@ -42,9 +42,9 @@ function RpcError(code, message, caused) {
   this.code = code;
   this.message = message || 'JSON-RPC Error.';
   if (caused instanceof Error) {
-    this.caused = caused.message;
+    this.data = caused.message;
   } else {
-    this.caused = caused;
+    this.data = caused;
   }
 }
 RpcError.prototype = Object.create(Error.prototype);
@@ -135,6 +135,37 @@ function getClassName(propValue) {
   return propValue.constructor.name;
 }
 
+function promisify(actual_func, scope) {
+  return function () {
+    var args = arguments;
+    return new Promise(function (resolve, reject) {
+      var apply_result = actual_func.apply(scope, args);
+      if (apply_result && typeof apply_result.then === 'function') {  // thenable
+        apply_result.then(resolve, reject);
+      } else {   // actual JS function and return normal result.
+        resolve(apply_result);
+      }
+    });
+  };
+}
+
+function promise_each(list, func_to_apply) {
+  return new Promise(function (resolve, reject) {
+    var p_func_to_apply = promisify(func_to_apply);
+    var _closure_per_item = function (_previous, _list, _i) {
+      return _previous.then(function () {
+        return p_func_to_apply(_list[_i], _i)
+      });
+    };
+    var last = Promise.resolve();
+    for (var i = 0; i < list.length; i++) {
+      last = _closure_per_item(last, list, i);
+    }
+    last.then(function () {
+      resolve();
+    }, reject);
+  });
+}
 
 module.exports = {
   JSON_RPC_VERSION: '2.0',
@@ -148,5 +179,7 @@ module.exports = {
   getClassName: getClassName,
   //
   RpcError: RpcError,
-  TypeError: TypeError
+  TypeError: TypeError,
+  //
+  promiseEach: promise_each
 };

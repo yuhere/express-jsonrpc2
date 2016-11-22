@@ -23,4 +23,13 @@ module.exports = function (_repository) {
   }, function (a, b, c) {
     return a + b + c;
   });
+  _repository.regsiter({
+    namespace: 'get_data',
+    doc: '',
+    sign: [PropTypes.number]
+  }, function () {
+    return ["hello", 5];
+  });
+
+
 };

@@ -27,7 +27,7 @@ var RPC_orig_call = function (input) {
       .end(function (err, res) {
         // console.log(err, res.body);
         if (err) {
-          return reject;
+          return reject(err);
         }
         resolve(res.body);
       });
@@ -115,7 +115,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       }).isRequiredNotNull;
       //
@@ -128,7 +128,7 @@ describe("SPEC", function () {
       should.strictEqual(output.jsonrpc, "2.0");
       should.strictEqual(output.error.code, -32601);
       should.strictEqual(output.error.message, 'Method not found');
-      should.strictEqual(output.error.caused, '"foobar"');
+      // should.strictEqual(output.error.data, '"foobar"');
       //
     });
   });
@@ -140,7 +140,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       }).isRequiredNotNull;
       // {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}
@@ -150,7 +150,7 @@ describe("SPEC", function () {
       should.strictEqual(output.jsonrpc, "2.0");
       should.strictEqual(output.error.code, -32700);
       should.strictEqual(output.error.message, 'Parse error');
-      should.strictEqual(output.error.caused, 'Unexpected token p');
+      // should.strictEqual(output.error.data, 'Unexpected token p');
     });
   });
   it("rpc call with invalid Request object", function () {
@@ -161,7 +161,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       }).isRequiredNotNull;
       // console.log('...output...', JSON.stringify(output));
@@ -172,7 +172,7 @@ describe("SPEC", function () {
       should.strictEqual(output.jsonrpc, "2.0");
       should.strictEqual(output.error.code, -32600);
       should.strictEqual(output.error.message, 'Invalid Request');
-      should.strictEqual(output.error.caused, 'Invalid parameter `JSONRPC.input.method` of type `number` supplied to `JSONRPC.input`, expected `string`.');
+      // should.strictEqual(output.error.data, 'Invalid parameter `JSONRPC.input.method` of type `number` supplied to `JSONRPC.input`, expected `string`.');
     });
   });
   it("rpc call Batch, invalid JSON", function () {
@@ -186,7 +186,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       }).isRequiredNotNull;
       // console.log('...output...', JSON.stringify(output));
@@ -197,7 +197,7 @@ describe("SPEC", function () {
       should.strictEqual(output.jsonrpc, "2.0");
       should.strictEqual(output.error.code, -32700);
       should.strictEqual(output.error.message, 'Parse error');
-      should.strictEqual(output.error.caused, 'Unexpected token ]');
+      // should.strictEqual(output.error.data, 'Unexpected token ]');
     });
   });
   it("rpc call with an empty Array", function () {
@@ -208,7 +208,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       }).isRequiredNotNull;
       // console.log('...output...', JSON.stringify(output));
@@ -219,7 +219,7 @@ describe("SPEC", function () {
       should.strictEqual(output.jsonrpc, "2.0");
       should.strictEqual(output.error.code, -32600);
       should.strictEqual(output.error.message, 'Invalid Request');
-      should.strictEqual(output.error.caused, 'RPC call with an empty array.');
+      // should.strictEqual(output.error.data, 'RPC call with an empty array.');
     });
   });
   it("rpc call with an invalid Batch (but not empty)", function () {
@@ -230,7 +230,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       })).isRequiredNotNull;
       // console.log('...output...', JSON.stringify(output));
@@ -241,7 +241,7 @@ describe("SPEC", function () {
       should.strictEqual(output[0].jsonrpc, "2.0");
       should.strictEqual(output[0].error.code, -32600);
       should.strictEqual(output[0].error.message, 'Invalid Request');
-      should.strictEqual(output[0].error.caused, 'Invalid parameter `JSONRPC.input` of type `number` supplied to `JSONRPC.input`, expected `object`.');
+      // should.strictEqual(output[0].error.data, 'Invalid parameter `JSONRPC.input` of type `number` supplied to `JSONRPC.input`, expected `object`.');
     });
   });
   it("rpc call with invalid Batch", function () {
@@ -252,7 +252,7 @@ describe("SPEC", function () {
         error: PropTypes.shape({
           code: PropTypes.number,
           message: PropTypes.string,
-          caused: PropTypes.string
+          data: PropTypes.string
         })
       })).isRequiredNotNull;
       // console.log('...output...', JSON.stringify(output));
@@ -269,7 +269,7 @@ describe("SPEC", function () {
         should.strictEqual(output[i].jsonrpc, "2.0");
         should.strictEqual(output[i].error.code, -32600);
         should.strictEqual(output[i].error.message, 'Invalid Request');
-        should.strictEqual(output[i].error.caused, 'Invalid parameter `JSONRPC.input` of type `number` supplied to `JSONRPC.input`, expected `object`.');
+        // should.strictEqual(output[i].error.data, 'Invalid parameter `JSONRPC.input` of type `number` supplied to `JSONRPC.input`, expected `object`.');
       }
     });
   });
@@ -289,7 +289,7 @@ describe("SPEC", function () {
             error: PropTypes.shape({
               code: PropTypes.number,
               message: PropTypes.string,
-              caused: PropTypes.string
+              data: PropTypes.string
             })
           }),
           PropTypes.shape({
@@ -299,7 +299,7 @@ describe("SPEC", function () {
           })
         ])
       ).isRequiredNotNull;
-      console.log('...output...', JSON.stringify(output));
+      // console.log('...output...', JSON.stringify(output));
       // <--
       // [
       //   {"jsonrpc": "2.0", "result": 7, "id": "1"},
@@ -310,11 +310,26 @@ describe("SPEC", function () {
       // ]
       var rpc_output_check_result = rpc_output_checker({output: output}, 'output', 'JSONRPC.call', 'JSONRPC.output');
       should.strictEqual(rpc_output_check_result, null);
-      should.strictEqual(output.id, null);
-      should.strictEqual(output.jsonrpc, "2.0");
-      should.strictEqual(output.error.code, -32600);
-      should.strictEqual(output.error.message, 'Invalid Request');
-      should.strictEqual(output.error.caused, 'rpc call with an invalid Batch (but not empty)');
+      should.strictEqual(output[0].id, "1");
+      should.strictEqual(output[0].jsonrpc, "2.0");
+      should.strictEqual(output[0].result, 7);
+      should.strictEqual(output[1].id, "2");
+      should.strictEqual(output[1].jsonrpc, "2.0");
+      should.strictEqual(output[1].result, 19);
+      should.strictEqual(output[2].id, null);
+      should.strictEqual(output[2].jsonrpc, "2.0");
+      should.strictEqual(output[2].error.code, -32600);
+      should.strictEqual(output[2].error.message, 'Invalid Request');
+      // should.strictEqual(output[2].error.data, 'Required parameter `JSONRPC.input.jsonrpc` was not specified in `JSONRPC.input`.');
+      should.strictEqual(output[3].id, "5");
+      should.strictEqual(output[3].jsonrpc, "2.0");
+      should.strictEqual(output[3].error.code, -32601);
+      should.strictEqual(output[3].error.message, 'Method not found');
+      // should.strictEqual(output[3].error.data, '"foo.get"');
+
+      should.strictEqual(output[4].id, "9");
+      should.strictEqual(output[4].jsonrpc, "2.0");
+      should.deepEqual(output[4].result, ["hello", 5]);
     });
   });
   it("rpc call Batch (all notifications)", function () {

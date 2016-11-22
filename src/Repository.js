@@ -1,4 +1,4 @@
-const Promise = require('bluebird');
+// const Promise = require('bluebird');
 const utils = require('./utils');
 const PropTypes = require('./PropTypes');
 const JsonRpcError = utils.RpcError;
@@ -143,7 +143,7 @@ module.exports = function Repository() {
   var _convert = function (input_params, injectable, rpc_method) {
     var __convert = _catch_errors(function (injectableContext, params, rpc_method) {
       var _typeof_params = utils.getPropType(params);
-      var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params).length;
+      var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params || {}).length;
       //
       if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // 命名方式调用, 但RPC函数不支持命名调用
         return new JsonRpcError(-32602, "Invalid params", 'Invalid invoke style `named style` suppled to `' + rpc_method.namespace + '`, excepted `positional style`.');
@@ -252,6 +252,23 @@ module.exports = function Repository() {
     }));
   };
 
+  var __invoke_batch = function (inputs, injectable) {
+    var outputs = [];
+    if (inputs.length === 0) {
+      return __wrap_output(undefined,
+        Promise.reject(new JsonRpcError(-32600, "Invalid Request", "RPC call with an empty array.")));
+    }
+    return utils.promiseEach(inputs, function (input, idx) {
+      return __invoke(input, injectable).then(function (output) {
+        output !== undefined && outputs.push(output);
+      })
+    }).then(function () {
+      if (outputs.length !== 0) {
+        return outputs;
+      }
+    });
+  };
+
   /**
    *
    * @param input
@@ -264,7 +281,7 @@ module.exports = function Repository() {
       invoke_thenable.then(function (output) {
         return resolve(output)
       }).catch(function (error) {
-        return reject({
+        return resolve({
           jsonrpc: utils.JSON_RPC_VERSION,
           id: input && input.id || null,
           error: error
@@ -284,29 +301,10 @@ module.exports = function Repository() {
    */
   var _invoke = function (input, injectable) {
     if (Array.isArray(input)) {
-      // {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
-      // __wrap_output()
-      // var output = [];
-      if (input.length === 0) {
-        return __wrap_output(undefined,
-          Promise.reject(new JsonRpcError(-32600, "Invalid Request", "RPC call with an empty array.")));
-      }
-      //
-      return Promise.mapSeries(input, function (item, index) {
-        return new Promise(function (resolve, reject) {
-          __invoke(item, injectable).then(resolve, function (error) {
-            resolve(error);
-          });
-        });
-      }, 0).then(function (res) {
-        // console.log('......output...', res);
-        return res;
-      });
+      return __invoke_batch(input, injectable);
     } else {
       return __invoke(input, injectable);
     }
-
-
   };
 
   /**
