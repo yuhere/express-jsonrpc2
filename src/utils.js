@@ -136,6 +136,9 @@ function getClassName(propValue) {
 }
 
 function promisify(actual_func, scope) {
+  if (typeof actual_func !== 'function') {
+    // throw new Error('InvalidArguments');
+  }
   return function () {
     var args = arguments;
     return new Promise(function (resolve, reject) {
@@ -181,5 +184,6 @@ module.exports = {
   RpcError: RpcError,
   TypeError: TypeError,
   //
-  promiseEach: promise_each
+  promiseEach: promise_each,
+  promisify: promisify
 };

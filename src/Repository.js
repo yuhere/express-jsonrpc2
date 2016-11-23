@@ -1,4 +1,3 @@
-// const Promise = require('bluebird');
 const utils = require('./utils');
 const PropTypes = require('./PropTypes');
 const JsonRpcError = utils.RpcError;
@@ -72,7 +71,7 @@ module.exports = function Repository() {
         paramsSignature: paramsSignature,     // 排除了 injectable 参数的签名列表, 包含returnType
         namespace: descriptor.namespace,
         doc: descriptor.doc,
-        func: func
+        func: utils.promisify(func, this)
       }
     };
     _repository.push(mk_descriptor(descriptor, func))
@@ -215,17 +214,13 @@ module.exports = function Repository() {
   var ___invoke = function (rpc_method, params) {
     return new Promise(function (resolve, reject) {
       // apply the function 实际调用 引发的错误. 未知的错误.
-      var result = _catch_errors(rpc_method.func, rpc_method).apply(null, params);
-      if (result instanceof Error) {
+      //    utils.promisify(rpc_method.func, rpc_method).apply(null, params);
+      rpc_method.func.apply(rpc_method, params).then(function (result) {
+        resolve(result)
+      }).catch(function (err) {
         console.error(-32603, "Internal JSON-RPC error when invoke method", result);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", result));
-      }
-      // return the result
-      if (result && typeof result.then === 'function') { // thenable
-        return result.then(resolve, reject); // resolve or reject the thenable result(return promisified function's result)
-      } else {
-        return resolve(result); // normal function call
-      }
+        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", err));
+      });
     })
   };
 
