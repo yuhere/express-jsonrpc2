@@ -215,10 +215,8 @@ module.exports = function Repository() {
     return new Promise(function (resolve, reject) {
       // apply the function 实际调用 引发的错误. 未知的错误.
       //    utils.promisify(rpc_method.func, rpc_method).apply(null, params);
-      rpc_method.func.apply(rpc_method, params).then(function (result) {
-        resolve(result)
-      }).catch(function (err) {
-        console.error(-32603, "Internal JSON-RPC error when invoke method", result);
+      rpc_method.func.apply(rpc_method, params).then(resolve).catch(function (err) {
+        console.error(-32603, "Internal JSON-RPC error when invoke method", err);
         return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", err));
       });
     })
