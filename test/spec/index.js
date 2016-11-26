@@ -3,7 +3,7 @@ var JsonRPC = require('../../src'),
   repository = JsonRPC.Repository();
 require('../../debug/test/spec')(repository);
 //
-var SERV_PATH = '/rpc';
+var SERV_PATH = '/';
 var express = require('express'),
   app = express();
 app.use(SERV_PATH, JsonRPC(repository));

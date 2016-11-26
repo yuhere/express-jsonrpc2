@@ -14,7 +14,7 @@
         var RPC_NS_SEPARATOR = '.';
         window.build_rpc_tv = function () {
             $("#methodList table.dirlist tbody").empty();
-            var rpc = jQuery.Py.jsonrpc('/rpc');
+            var rpc = jQuery.Py.jsonrpc('');
             var listMethods;
             try {
                 listMethods = rpc.call('system.listMethods');
@@ -69,7 +69,7 @@
         window.doTest = function () {
             if ($('#methodName').text() == "") {
             } else {
-                var rpc = jQuery.Py.jsonrpc('/rpc');
+                var rpc = jQuery.Py.jsonrpc('');
                 try {
                     var mtds0 = rpc.call($('#methodName').text(), JSON.parse($('#methodTestInput').val()));
                     console.log(mtds0);
@@ -80,7 +80,7 @@
         };
 
         window.fetchDetail = function (fullMethodName) {
-            var rpc = jQuery.Py.jsonrpc('/rpc'); // 'http://localhost:8003/pyerp/rpc'
+            var rpc = jQuery.Py.jsonrpc(''); // 'http://localhost:8003/pyerp/rpc'
             try {
                 var mtds0 = rpc.call('system.methodHelp', [fullMethodName]);
                 $('#methodHelp').text(mtds0);
@@ -188,24 +188,16 @@
 </head>
 <body>
 <div id="wrapper">
-    <div id="mainnav" class="nav">
-        <ul>
-            <li class="first"><a href="javascript:void(0);">调试</a></li>
-            <li><a href="javascript:void(0);">服务器端日志</a></li>
-            <li class="last"><a href="javascript:void(0);">关于</a></li>
-        </ul>
-    </div>
     <div id="main">
         <div id="ctxtnav" class="nav">
             <h2>Context Navigation</h2>
             <hr/>
         </div>
-
         <div id="content" class="wiki">
             <div id="debug_tool">
                 <div id="methodList" class="rpcview">
                     <fieldset class="rpcfield">
-                        <legend><a href="javascript:build_rpc_tv();void(0);" title="点击进行刷新">可用的远程方法：</a></legend>
+                        <legend><a href="javascript:build_rpc_tv();void(0);" title="点击进行刷新">RPC availabled：</a></legend>
                         <table class="listing dirlist" id="dirlist">
                             <tbody></tbody>
                         </table>
@@ -213,20 +205,20 @@
                 </div> <!-- end methodList -->
                 <div id="tabcontent" class="rpcdview">
                     <fieldset class="rpcfield">
-                        <legend>帮助</legend>
+                        <legend>Help</legend>
                         <pre id="methodHelp" class="help"></pre>
                     </fieldset>
                     <fieldset class="rpcfield">
-                        <legend>签名</legend>
+                        <legend>Signature</legend>
                         <pre id="methodSignature" class="help"></pre>
                     </fieldset>
                     <fieldset class="rpcfield">
-                        <legend>测试 <span id="methodName"></span></legend>
+                        <legend>Parameters for Test<span id="methodName"></span></legend>
                         <form id="accountsconfig" class="mod" method="post">
                             <p><textarea id="methodTestInput" class="rpcinput ta-resizable" name="text" cols="80"
                                          rows="3"></textarea></p>
                             <div class="buttons">
-                                <input type="button" name="save" value="执行" onclick="javascript:doTest();"/>
+                                <input type="button" name="save" value="execute" onclick="javascript:doTest();"/>
                             </div>
                         </form>
                     </fieldset>

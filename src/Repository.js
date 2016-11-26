@@ -319,9 +319,9 @@ module.exports = function Repository() {
    * For JSON-RPC multicall, signatures is an array of regular method call
    * structs, and result is an array of return structures.
    */
-  var system_multicall = function () {
-  };
-  _regsiter({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
+  // var system_multicall = function () {
+  // };
+  // _regsiter({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
 
   /**
    * This method takes one parameter, the name of a method implemented by the RPC server.
