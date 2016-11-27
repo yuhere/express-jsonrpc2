@@ -1,4 +1,4 @@
-var PropTypes = require('../../../src').PropTypes;
+var PropTypes = require('../../src').PropTypes;
 
 //
 module.exports = function (_repository) {
@@ -22,6 +22,14 @@ module.exports = function (_repository) {
     sign: [PropTypes.number, PropTypes.number, PropTypes.number, PropTypes.number]
   }, function (a, b, c) {
     return a + b + c;
+  });
+  _repository.regsiter({
+    namespace: 'grant',
+    grantTo: ['a', 'b'],
+    doc: '',
+    sign: [PropTypes.string, PropTypes.string]
+  }, function (a) {
+    return a;
   });
   _repository.regsiter({
     namespace: 'get_data',

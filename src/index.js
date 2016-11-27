@@ -53,23 +53,20 @@ var _read_json = function (req, res) {
  * @returns {Function}
  * @private
  */
-function _mk_rpc_dispatch(rpc_repository) {
+function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
   return function (req, res, next) {
     // console.log('_rpc_dispatch...', req.rpc);
     return _read_json(req, res).then(function (input) {
       // construct injectable variables or factories(function)
-      var injectable = {
+      var injectable = typeof mk_injectable === 'function'
+        ? mk_injectable(req, res, rpc_repository)
+        : {
         request: req,
         session: req.session,
         response: res,
-        repository: rpc_repository,
-        input: input,
-        permits: function () {
-          throw new Error('TODO not implemented.')
-        }
+        repository: rpc_repository
       };
       return rpc_repository.invoke(input, injectable).then(function (output) {
-        // console.log('==' + output + 'bbb');
         return res.status(200).json(output).end();
       })
     }).catch(function (output) {
@@ -84,7 +81,7 @@ function _mk_rpc_dispatch(rpc_repository) {
  * @returns {*}
  * @constructor
  */
-function JsonRPC(_repository) {
+function JsonRPC(_repository, mk_injectable) {
   /**
    * POST 处理.
    *
@@ -93,7 +90,7 @@ function JsonRPC(_repository) {
    * 3, 分发 & 调用 具体的实现;
    */
   var router = express.Router();
-  router.post('/', _mk_rpc_dispatch(_repository));
+  router.post('/', _mk_rpc_dispatch(_repository, mk_injectable));
   // public static resources
   router.use(express.static(path.join(__dirname, '..', 'src', 'public')));
   return router;

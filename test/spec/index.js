@@ -1,7 +1,7 @@
 var JsonRPC = require('../../src'),
   PropTypes = JsonRPC.PropTypes,
   repository = JsonRPC.Repository();
-require('../../debug/test/spec')(repository);
+require('../../debug/test')(repository);
 //
 var SERV_PATH = '/';
 var express = require('express'),

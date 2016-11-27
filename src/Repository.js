@@ -62,6 +62,20 @@ module.exports = function Repository() {
         namedParams = [];   // 不能使用 命名参数 => 重置
       }
       //
+      //
+      var _grantTo = descriptor.grantTo;
+      if (_grantTo !== undefined) {
+        if (typeof _grantTo === 'string') {
+          _grantTo = [_grantTo];
+        } else {
+          var _grant_to_checker = PropTypes.arrayOf(PropTypes.string);
+          var _grant_to_check_result = _grant_to_checker({grantTo: _grantTo}, 'grantTo', 'regsiter', 'descriptor.grantTo');
+          if (_grant_to_check_result !== null) {
+            throw _grant_to_check_result;
+          }
+        }
+      }
+      //
       return {
         canNameableCall: namedParams.length !== 0,
         indexedParams: indexedParams,
@@ -70,6 +84,7 @@ module.exports = function Repository() {
         paramsCount: indexedParams.length + injectableParams.length,  // 排除了 injectable 参数的签名count
         paramsSignature: paramsSignature,     // 排除了 injectable 参数的签名列表, 包含returnType
         namespace: descriptor.namespace,
+        grantTo: _grantTo,
         doc: descriptor.doc,
         func: utils.promisify(func, this)
       }
@@ -222,18 +237,39 @@ module.exports = function Repository() {
     })
   };
 
+  var _perm_check = function (rpc_method, injectable) {
+    return new Promise(function (resolve, reject) {
+      if (injectable && typeof injectable.perm_check === 'function' && rpc_method.grantTo) {
+        var perm_check = injectable.perm_check;
+        try {
+          if (perm_check(rpc_method.grantTo) === true) {
+            return resolve(rpc_method);
+          } else {
+            return reject(new JsonRpcError(-32604, "Permission denied", "one of " + JSON.stringify(rpc_method.grantTo) + " is necessary."));
+          }
+        } catch (err) {
+          return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when perm_check method", err));
+        }
+      } else {
+        return resolve(rpc_method); // perm_check or grantTo undefined, do not perm_check.
+      }
+    });
+  };
+
   var __invoke = function (input, injectable) {
     return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
       var _next = _lookup(input.method).then(function (rpc_method) {
-        return _convert(input.params, injectable, rpc_method).then(function (params) {
-          return ___invoke(rpc_method, params).then(function (result) {
-            return {
-              jsonrpc: utils.JSON_RPC_VERSION,
-              id: input.id,
-              result: result === undefined ? null : result  // TODO SPEC要求 成功时必须, 然而, 返回null和undefined(不必须)的意义可能不同, null代表函数返回值是null, undefined代表函数没有返回值?
-            }
+        return _perm_check(rpc_method, injectable).then(function (rpc_method) {
+          return _convert(input.params, injectable, rpc_method).then(function (params) {
+            return ___invoke(rpc_method, params).then(function (result) {
+              return {
+                jsonrpc: utils.JSON_RPC_VERSION,
+                id: input.id,
+                result: result === undefined ? null : result  // TODO SPEC要求 成功时必须, 然而, 返回null和undefined(不必须)的意义可能不同, null代表函数返回值是null, undefined代表函数没有返回值?
+              }
+            });
           });
-        })
+        });
       });
       //
       if (input.id === undefined || input.id === null) {

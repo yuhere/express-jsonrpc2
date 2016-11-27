@@ -69,12 +69,80 @@ _repository.regsiter({
 });
 ```
 
-There are some options for injectable:
+By default follow of options are available for injectable:
 
   * request
   * session
   * response
   * repository - the RPC repository.
+
+### Permission check
+
+Some of case, RPC not allow unprivileged call.
+Before actually call, permission check mechanism will be execute.
+
+This function depend on 'perm_check' of injectable parameter,
+should implement the perm_check function first. 
+
+Once perm_check fail, RPCError(-32604, "Permission denied") will be raised.
+
+```
+mk_injectable(req, res, rpc_repository)
+var path = require('path'),
+  express = require('express'),
+  app = express();
+var JsonRPC = require('../src'),
+  PropTypes = JsonRPC.PropTypes,
+  _repository = JsonRPC.Repository();
+
+_repository.regsiter({
+  namespace: 'add',
+  grantTo: ['role1', 'role2'],
+  doc: 'addition of 2 numbers.',
+  sign: [PropTypes.number, PropTypes.number, PropTypes.number]
+}, function (a, b) {
+  return a + b;
+});
+
+app.set('port', (process.env.PORT || 5000));
+app.use('/', JsonRPC(_repository, function getInjectable(req, res, repository) {
+  return {
+    request: req,
+    session: req.session,
+    response: res,
+    repository: repository,
+    perm_check: function(grantTo) {  // 
+       var session = req.session;
+       var userRoles = session.user.roles;
+       for (var i = 0;i < userRoles.length;i++) {
+         var role = userRoles[i];
+         if (grantTo.indexOf(role) !== -1) {  // user role is in granted to LIST.
+           return true;
+         }
+       }
+       return false;
+    }
+  }
+}));
+
+app.listen(app.get('port'), function () {
+  console.log('Node app is running on port', app.get('port'));
+});
+
+```
+
+
+## The error codes
+
+| code             | message           | meaning                                                                                               |
+|:-----------------| :-----------------|:------------------------------------------------------------------------------------------------------|
+| -32700           | Parse error       | Invalid JSON was received by the server. An error occurred on the server while parsing the JSON text. |
+| -32600           | Invalid Request   | The JSON sent is not a valid Request object.                                                          |
+| -32601           | Method not found  | The method does not exist / is not available.                                                         |
+| -32602           | Invalid params    | Invalid method parameter(s).                                                                          |
+| -32603           | Internal error    | Internal JSON-RPC error.                                                                              |
+| -32604           | Permission denied | Injectable 'perm_check' not return true.                                                              |
+| -32000 to -32099 | Server error      | Reserved for implementation-defined server-errors.                                                    |
 
 ## For development steps
 
