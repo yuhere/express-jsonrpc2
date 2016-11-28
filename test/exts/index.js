@@ -13,10 +13,15 @@ app.use(SERV_PATH, JsonRPC(repository, function getInjectable(req, res, reposito
     response: res,
     repository: repository,
     perm_check: function (grantTo) {  //
-      if (req.headers['grant']) {
-        return true
-      }
-      return false;
+      return new Promise(function (resolve, reject) {
+        setTimeout(function () {
+          if (req.headers['grant']) {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        }, 500)
+      });
     }
   }
 }));
@@ -50,7 +55,7 @@ var RPC_orig_call = function (input, grant) {
   })
 };
 
-describe("EXT", function () {
+describe("EXT -", function () {
   it("Permission check failed", function () {
     return RPC_orig_call(JSON.stringify({
       "jsonrpc": "2.0",

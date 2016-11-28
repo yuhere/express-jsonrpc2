@@ -240,16 +240,16 @@ module.exports = function Repository() {
   var _perm_check = function (rpc_method, injectable) {
     return new Promise(function (resolve, reject) {
       if (injectable && typeof injectable.perm_check === 'function' && rpc_method.grantTo) {
-        var perm_check = injectable.perm_check;
-        try {
-          if (perm_check(rpc_method.grantTo) === true) {
+        var _promisifed = utils.promisify(injectable.perm_check, rpc_method);
+        _promisifed(rpc_method.grantTo).then(function (check_result) {
+          if (check_result === true) {
             return resolve(rpc_method);
           } else {
             return reject(new JsonRpcError(-32604, "Permission denied", "one of " + JSON.stringify(rpc_method.grantTo) + " is necessary."));
           }
-        } catch (err) {
+        }).catch(function (err) {
           return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when perm_check method", err));
-        }
+        });
       } else {
         return resolve(rpc_method); // perm_check or grantTo undefined, do not perm_check.
       }

@@ -35,7 +35,7 @@ app.listen(app.get('port'), function () {
 });
 ```
 
-## How to test
+## How to debug
 
 Open 'http://localhost:5000' in browser, you will see the Debug page.
 On left-side of the page, a serial of available RPC listing in tree view.
@@ -85,6 +85,9 @@ This function depend on 'perm_check' of injectable parameter,
 should implement the perm_check function first. 
 
 Once perm_check fail, RPCError(-32604, "Permission denied") will be raised.
+
+About 'perm_check' function, It can as normal function return true/false to make succeed/failed.
+It also can return a Promise, resolve true/false or reject(error) to notify check result.
 
 ```
 mk_injectable(req, res, rpc_repository)
