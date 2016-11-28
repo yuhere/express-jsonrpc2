@@ -15,7 +15,7 @@ npm install express-jsonrpc2
 var path = require('path'),
   express = require('express'),
   app = express();
-var JsonRPC = require('../src'),
+var JsonRPC = require('express-jsonrpc2'),
   PropTypes = JsonRPC.PropTypes,
   _repository = JsonRPC.Repository();
 
@@ -94,7 +94,7 @@ mk_injectable(req, res, rpc_repository)
 var path = require('path'),
   express = require('express'),
   app = express();
-var JsonRPC = require('../src'),
+var JsonRPC = require('express-jsonrpc2'),
   PropTypes = JsonRPC.PropTypes,
   _repository = JsonRPC.Repository();
 
