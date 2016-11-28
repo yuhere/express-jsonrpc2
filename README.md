@@ -45,10 +45,10 @@ Input text of '\[1, 2\]', and then click 'execute' button, 3 will show in consol
 
 ## Extra features
 
-### Built-on RPC
+### 
+Built-on RPC
+  There are 3 built-on RPC on this RPC service. You can see them on Debug page.
 
-  There are built-on 3 RPC on this RPC service. You can see them on Debug page.
-   
     * system.listMethods - This method returns an array of strings, one for each (non-system) method supported by the RPC server.
     * system.methodSignature - It returns an array of possible signatures for this method.
     * system.methodHelp - It returns a documentation string describing the  use of that method.
@@ -144,7 +144,7 @@ app.listen(app.get('port'), function () {
 | -32601           | Method not found  | The method does not exist / is not available.                                                         |
 | -32602           | Invalid params    | Invalid method parameter(s).                                                                          |
 | -32603           | Internal error    | Internal JSON-RPC error.                                                                              |
-| -32604           | Permission denied | Injectable 'perm_check' not return true.                                                              |
+| -32604           | Permission denied | Injectable 'perm_check' not return/resolve true.                                                      |
 | -32000 to -32099 | Server error      | Reserved for implementation-defined server-errors.                                                    |
 
 ## For development steps
