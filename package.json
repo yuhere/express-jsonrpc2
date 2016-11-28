@@ -1,6 +1,6 @@
 {
   "name": "express-jsonrpc2",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "private": false,
   "description": "JSON-RPC for express.",
   "engines": {
