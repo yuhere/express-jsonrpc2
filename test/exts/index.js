@@ -12,7 +12,7 @@ app.use(SERV_PATH, JsonRPC(repository, function getInjectable(req, res, reposito
     session: req.session,
     response: res,
     repository: repository,
-    perm_check: function (grantTo) {  //
+    perm_check: function (grantTo, rpc_input) {  //
       return new Promise(function (resolve, reject) {
         setTimeout(function () {
           if (req.headers['grant']) {
@@ -55,7 +55,7 @@ var RPC_orig_call = function (input, grant) {
   })
 };
 
-describe("EXT -", function () {
+describe("EXT - Permission check", function () {
   it("Permission check failed", function () {
     return RPC_orig_call(JSON.stringify({
       "jsonrpc": "2.0",

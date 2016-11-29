@@ -237,11 +237,11 @@ module.exports = function Repository() {
     })
   };
 
-  var _perm_check = function (rpc_method, injectable) {
+  var _perm_check = function (rpc_method, input, injectable) {
     return new Promise(function (resolve, reject) {
       if (injectable && typeof injectable.perm_check === 'function' && rpc_method.grantTo) {
         var _promisifed = utils.promisify(injectable.perm_check, rpc_method);
-        _promisifed(rpc_method.grantTo).then(function (check_result) {
+        _promisifed(rpc_method.grantTo, input).then(function (check_result) {
           if (check_result === true) {
             return resolve(rpc_method);
           } else {
@@ -259,7 +259,7 @@ module.exports = function Repository() {
   var __invoke = function (input, injectable) {
     return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
       var _next = _lookup(input.method).then(function (rpc_method) {
-        return _perm_check(rpc_method, injectable).then(function (rpc_method) {
+        return _perm_check(rpc_method, input, injectable).then(function (rpc_method) {
           return _convert(input.params, injectable, rpc_method).then(function (params) {
             return ___invoke(rpc_method, params).then(function (result) {
               return {
