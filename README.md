@@ -1,5 +1,8 @@
 # JSON-RPC version 2 implement for express.js
 
+[![codecov](https://codecov.io/gh/yuhere/express-jsonrpc2/branch/master/graph/badge.svg)](https://codecov.io/gh/yuhere/express-jsonrpc2)
+
+
 express-jsonrpc2 is a complete [JSON-RPC version 2](http://www.jsonrpc.org/specification) server-side implement for [express](https://www.npmjs.com/package/express) library on node.js.
 It's a middleware of [express](https://www.npmjs.com/package/express).
 
@@ -86,7 +89,7 @@ should implement the perm_check function first.
 
 Once perm_check fail, RPCError(-32604, "Permission denied") will be raised.
 
-About 'perm_check' function, It can as normal function return true/false to make succeed/failed.
+About 'perm_check' function, It can as normal function return true/false to make it allow/deny.
 It also can return a Promise, resolve true/false or reject(error) to notify check result.
 
 ```
@@ -154,7 +157,7 @@ app.listen(app.get('port'), function () {
   3. Run `npm run start` to start the debug server;
   4. Open 'http://localhost:5000' in browser;
   
-Once fixes or modifies done, should run `npm run test` and ensure all test case passed. 
+Once fixes or modifies done, should run `npm run test` and ensure all test case can be passed. 
 
 ## Any questions
 

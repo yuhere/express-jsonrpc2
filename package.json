@@ -8,7 +8,7 @@
     "npm": "^3.10.9"
   },
   "scripts": {
-    "coverage": "istanbul cover _mocha",
+    "coverage": "istanbul cover _mocha --report lcovonly -- -R spec && codecov",
     "test": "mocha --reporter spec",
     "start": "node debug/index.js"
   },
@@ -18,14 +18,16 @@
     "README.md"
   ],
   "author": "yuhere@gmail.com",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/yuhere/express-jsonrpc2"
   },
   "devDependencies": {
+    "codecov": "1.0.1",
+    "istanbul": "0.4.5",
     "mocha": "3.1.2",
     "should": "11.1.1",
-    "istanbul": "0.4.5",
     "supertest": "2.0.1"
   },
   "dependencies": {
