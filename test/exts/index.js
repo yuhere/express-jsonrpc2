@@ -55,7 +55,7 @@ var RPC_orig_call = function (input, grant) {
   })
 };
 
-describe("EXT - Permission check", function () {
+describe("EXT", function () {
   it("Permission check failed", function () {
     return RPC_orig_call(JSON.stringify({
       "jsonrpc": "2.0",
@@ -103,6 +103,65 @@ describe("EXT - Permission check", function () {
       should.strictEqual(output.result, "grant");
     });
   });
+  it("Built-on RPC - system.listMethods", function () {
+    return RPC_orig_call(JSON.stringify({
+      "jsonrpc": "2.0",
+      "method": "system.listMethods",
+      "params": [],
+      "id": 1
+    }), true).then(function (output) {
+      var rpc_output_checker = PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.number]),
+        jsonrpc: PropTypes.oneOfType([PropTypes.string]),
+        result: PropTypes.arrayOf(PropTypes.string)
+      }).isRequiredNotNull;
+      //
+      // console.log('...output...', JSON.stringify(output));
+      var rpc_output_check_result = rpc_output_checker({output: output}, 'output', 'JSONRPC.call', 'JSONRPC.output');
+      should.strictEqual(rpc_output_check_result, null);
+      should.strictEqual(true, Array.isArray(output.result));
+    });
+  });
+  it("Built-on RPC - system.methodSignature", function () {
+    return RPC_orig_call(JSON.stringify({
+      "jsonrpc": "2.0",
+      "method": "system.methodSignature",
+      "params": ["system.listMethods"],
+      "id": 1
+    }), true).then(function (output) {
+      var rpc_output_checker = PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.number]),
+        jsonrpc: PropTypes.oneOfType([PropTypes.string]),
+        result: PropTypes.array
+      }).isRequiredNotNull;
+      //
+      // console.log('...output...', JSON.stringify(output));
+      var rpc_output_check_result = rpc_output_checker({output: output}, 'output', 'JSONRPC.call', 'JSONRPC.output');
+      should.strictEqual(rpc_output_check_result, null);
+      should.strictEqual(true, Array.isArray(output.result));
+    });
+  });
+  it("Built-on RPC - system.methodHelp", function () {
+    return RPC_orig_call(JSON.stringify({
+      "jsonrpc": "2.0",
+      "method": "system.methodHelp",
+      "params": ["system.listMethods"],
+      "id": 1
+    }), true).then(function (output) {
+      var rpc_output_checker = PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.number]),
+        jsonrpc: PropTypes.oneOfType([PropTypes.string]),
+        result: PropTypes.string
+      }).isRequiredNotNull;
+      //
+      // console.log('...output...', JSON.stringify(output));
+      var rpc_output_check_result = rpc_output_checker({output: output}, 'output', 'JSONRPC.call', 'JSONRPC.output');
+      should.strictEqual(rpc_output_check_result, null);
+      should.strictEqual('string', typeof output.result);
+    });
+  });
+
+
 });
 
 

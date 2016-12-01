@@ -8,6 +8,7 @@
     "npm": "^3.10.9"
   },
   "scripts": {
+    "cover": "istanbul cover _mocha",
     "coverage": "istanbul cover _mocha --report lcovonly -- -R spec && codecov",
     "test": "mocha --reporter spec",
     "start": "node debug/index.js"

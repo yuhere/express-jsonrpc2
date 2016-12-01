@@ -346,9 +346,10 @@ module.exports = function Repository() {
   };
   _regsiter({
     namespace: 'system.listMethods',
-    doc: '',
+    doc: 'This method returns an array of strings, one for each method supported by the RPC server.',
     sign: [PropTypes.array]
   }, system_listMethods);
+
   /**
    * Takes an array of RPC calls encoded as structs of the form:
    *    `{'methodName': string, 'params': array}`.
@@ -376,7 +377,6 @@ module.exports = function Repository() {
     }
     throw new Error('Method not found.[' + namespace + ']');
   };
-
   _regsiter({
     namespace: 'system.methodSignature',
     doc: '',
@@ -400,7 +400,7 @@ module.exports = function Repository() {
       if (typeof(doc) === 'function') {
         return doc();   // 由于 文本 可能比较大, 可以通过(异步)`读取`函数获得
       } else {
-        return doc || null;
+        return doc === undefined  ? null : doc;
       }
     }
     throw new Error('Method not found.[' + namespace + ']');
