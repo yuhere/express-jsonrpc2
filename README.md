@@ -1,8 +1,10 @@
 # JSON-RPC version 2 implement for express.js
 
 [![NPM Download Status](https://img.shields.io/npm/dm/express-jsonrpc2.svg)](https://npmjs.org/package/express-jsonrpc2)
+[![Version on NPM](https://img.shields.io/npm/v/express-jsonrpc2.svg?style=flat-square)](https://npmjs.org/package/express-jsonrpc2)
 [![Travis CI Status](https://api.travis-ci.org/yuhere/express-jsonrpc2.svg?branch=master)](https://travis-ci.org/yuhere/express-jsonrpc2)
 [![codecov](https://codecov.io/gh/yuhere/express-jsonrpc2/branch/master/graph/badge.svg)](https://codecov.io/gh/yuhere/express-jsonrpc2)
+
 
 express-jsonrpc2 is a complete [JSON-RPC version 2](http://www.jsonrpc.org/specification) server-side implement for [express](https://www.npmjs.com/package/express) library on node.js.
 It's a middleware of [express](https://www.npmjs.com/package/express).
@@ -83,7 +85,7 @@ By default follow of options are available for injectable:
 ### Permission check
 
 Some of case, RPC not allow unprivileged call.
-Before actually call, permission check mechanism will be execute.
+Before actually call, permission check mechanism will be triggered.
 
 This function depend on 'perm_check' of injectable parameter,
 should implement the perm_check function first. 
