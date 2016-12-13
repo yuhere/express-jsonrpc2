@@ -51,9 +51,9 @@ Input text of '\[1, 2\]', and then click 'execute' button, 3 will show in consol
 
 ## Extra features
 
-### 
-Built-on RPC
-  There are 3 built-on RPC on this RPC service. You can see them on Debug page.
+### Built-on RPC
+
+  There are 3 built-on RPC on this RPC server. You can see them on Debug page.
 
     * system.listMethods - This method returns an array of strings, one for each (non-system) method supported by the RPC server.
     * system.methodSignature - It returns an array of possible signatures for this method.

@@ -5,7 +5,7 @@ var should = require('should');
 
 var _repository = new Repository();
 
-_repository.regsiter({
+_repository.register({
   namespace: 'unit.subtract',
   doc: '',
   sign: [PropTypes.void, PropTypes.number.naming('minuend').default(0), PropTypes.number.naming('subtrahend')]

@@ -1,10 +1,10 @@
-const path = require('path');
-const express = require('express');
-const bodyParser = require('body-parser');
-const utils = require('./utils');
-const JsonRpcError = utils.RpcError;
-const PropTypes = require('./PropTypes');
-const Repository = require('./Repository');
+var path = require('path'),
+  express = require('express'),
+  bodyParser = require('body-parser'),
+  utils = require('./utils'),
+  JsonRpcError = utils.RpcError,
+  PropTypes = require('./PropTypes'),
+  Repository = require('./Repository');
 
 var _json_parser = bodyParser.json({
   verify: function (req, res, buf, encoding) {

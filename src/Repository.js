@@ -1,27 +1,31 @@
-const utils = require('./utils');
-const PropTypes = require('./PropTypes');
-const JsonRpcError = utils.RpcError;
-const TypeError = utils.TypeError;
+var utils = require('./utils'),
+  PropTypes = require('./PropTypes'),
+  JsonRpcError = utils.RpcError,
+  TypeError = utils.TypeError;
 
 /**
  *
  *
- * @type {{regsiter, scan, invoke}}
+ * @type {{register, scan, invoke}}
  */
 module.exports = function Repository() {
 
   var _repository = [];
 
   /**
+   * register RPC to repository.
    *
    * @param descriptor
    * @param func
    * @private
    */
-  var _regsiter = function (descriptor, func) {
-    // console.log('_regsiter', _descriptor);
+  var _register = function (descriptor, func) {
+    // console.log('_register', _descriptor);
     var mk_descriptor = function (descriptor, func) {
       if (!Array.isArray(descriptor.sign) || descriptor.sign.length === 0) { // throw
+
+      }
+      if (!descriptor.namespace) {
 
       }
       //
@@ -31,22 +35,20 @@ module.exports = function Repository() {
         indexedParams = [],
         injectableParams = [],
         namedParams = [];
-      // parmasSignature.push(get_rpctype(method.getReturnType()));
-
       var namedSignature = [],
         indexedSignature = [];
       for (var paramsIdx = 0; paramsIdx < _signs.length; paramsIdx++) {
         var _propType = _signs[paramsIdx];
 
-        if (_propType.typeProps.hasOwnProperty('injectable')) {  // TODO 这个判断方法?? 需要判断的内容是: 此处的定义是PropTypes.injectable类型
+        if (_propType.typeProps.hasOwnProperty('injectable')) {
           injectableParams.push([_propType, paramsIdx]);
         } else {
           if (_propType.typeProps.hasOwnProperty('naming')) {
             var _exists_idx = namedParams.findIndex(function (item, idx) {
               return item[0].typeProps.naming === _propType.typeProps.naming;
             });
-            if (_exists_idx !== -1) {  //  TODO or throw error or wran
-              // 错误的命名参数count 导致放弃命名方式调用
+            if (_exists_idx !== -1) {
+              throw new Error('Duplicate named parameter[' + _propType.typeProps.naming + '] for `' + descriptor.namespace + '`.');
             } else {
               namedParams.push([_propType, paramsIdx]);
             }
@@ -56,12 +58,9 @@ module.exports = function Repository() {
         }
       }
       //
-      // console.log('...ffff...', namedParams.length, indexedParams.length);
-      // TODO (namedParams.length > 0 && namedParams.length !== indexedParams.length)
-      if (namedParams.length !== indexedParams.length) {
-        namedParams = [];   // 不能使用 命名参数 => 重置
+      if (namedParams.length > 0 && namedParams.length !== indexedParams.length) {
+        throw new Error('Named call must make name for all parameters. `' + descriptor.namespace + '`.');
       }
-      //
       //
       var _grantTo = descriptor.grantTo;
       if (_grantTo !== undefined) {
@@ -69,7 +68,7 @@ module.exports = function Repository() {
           _grantTo = [_grantTo];
         } else {
           var _grant_to_checker = PropTypes.arrayOf(PropTypes.string);
-          var _grant_to_check_result = _grant_to_checker({grantTo: _grantTo}, 'grantTo', 'regsiter', 'descriptor.grantTo');
+          var _grant_to_check_result = _grant_to_checker({grantTo: _grantTo}, 'grantTo', 'register', 'descriptor.grantTo');
           if (_grant_to_check_result !== null) {
             throw _grant_to_check_result;
           }
@@ -81,8 +80,8 @@ module.exports = function Repository() {
         indexedParams: indexedParams,
         namedParams: namedParams,
         injectableParams: injectableParams,
-        paramsCount: indexedParams.length + injectableParams.length,  // 排除了 injectable 参数的签名count
-        paramsSignature: paramsSignature,     // 排除了 injectable 参数的签名列表, 包含returnType
+        paramsCount: indexedParams.length + injectableParams.length,
+        paramsSignature: paramsSignature,     // exclude injectable parameters, include returnType
         namespace: descriptor.namespace,
         grantTo: _grantTo,
         doc: descriptor.doc,
@@ -102,10 +101,17 @@ module.exports = function Repository() {
     }
   };
 
+  /**
+   * Check input by RPC spec.
+   *
+   * @param input
+   * @returns {Promise}
+   * @private
+   */
   var _rpc_spec_check = function (input) {
     return new Promise(function (resolve, reject) {
       var rpc_input_checker = PropTypes.shape({
-        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),   // 允许 null, 但必须被设置
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         jsonrpc: PropTypes.oneOf([utils.JSON_RPC_VERSION]).isRequiredNotNull,  // 2.0
         method: PropTypes.string.isRequiredNotNull,
         params: PropTypes.oneOfType([PropTypes.object, PropTypes.array])
@@ -119,26 +125,26 @@ module.exports = function Repository() {
   };
 
   /**
-   * 根据 `namespace` 符合条件rpc方法。
+   * Lookup RPC function by `namespace`
    *
    * @param namespace
    * @param params
    * @returns {*}
    * @private
    */
-  var _lookup = function (_method) {
-    var __lookup = _catch_errors(function (_method) {
+  var _lookup = function (namespace) {
+    var __lookup = _catch_errors(function (namespace) {
       for (var i = 0; i < _repository.length; i++) {
         var _rpc_method = _repository[i];
-        if (_method === _rpc_method.namespace) { // 函数名 不匹配的
+        if (namespace === _rpc_method.namespace) {
           return _rpc_method;
         }
       }
-      return new JsonRpcError(-32601, "Method not found", JSON.stringify(_method))
+      return new JsonRpcError(-32601, "Method not found", JSON.stringify(namespace))
     });
     //
     return new Promise(function (resolve, reject) {
-      var rpc_method = __lookup(_method);
+      var rpc_method = __lookup(namespace);
       if (rpc_method instanceof JsonRpcError) {
         // console.error(-32603, "Internal JSON-RPC error lookup method", rpc_method);
         return reject(rpc_method);
@@ -152,7 +158,13 @@ module.exports = function Repository() {
   };
 
   /**
-   * 根据 参数的定义 检查 & 转换(注入)参数.
+   * Convert(check & inject) input parameters to invokable parameters.
+   *
+   * @param input_params
+   * @param injectable
+   * @param rpc_method
+   * @returns {Promise}
+   * @private
    */
   var _convert = function (input_params, injectable, rpc_method) {
     var __convert = _catch_errors(function (injectableContext, params, rpc_method) {
@@ -168,37 +180,35 @@ module.exports = function Repository() {
       }
       // 复制 & 注入 传入的参数
       var convertedParams = new Array(rpc_method.paramsCount);
-      // 注入 定义的参数
+      // process injectable parameters
       for (var i = 0; i < rpc_method.injectableParams.length; i++) {
         var injectableParam = rpc_method.injectableParams[i];
         var propType = injectableParam[0];
-        var _prop_type_check_result = PropTypes.any.isRequired(injectableContext, propType.injectable, 'injectableContext', 'injectableContext[' + propType.injectable + ']');
-        if (_prop_type_check_result instanceof TypeError) {  // TODO when obtain undefined, how to process? ignore or be an error
-          console.error(-32602, "Invalid params", _prop_type_check_result);
-          // return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
+        // injectable parameter must defined in injectableContext
+        var _inj_prop_type_check_result = PropTypes.any.isRequired(injectableContext, propType.injectable, 'injectableContext', 'injectableContext[' + propType.injectable + ']');
+        if (_inj_prop_type_check_result instanceof TypeError) {
+          return new JsonRpcError(-32602, "Invalid params", _inj_prop_type_check_result);
         }
         convertedParams[injectableParam[1]] = injectableContext[propType.injectable];
       }
       if (_typeof_params === 'array') {
         for (var j = 0; j < rpc_method.indexedParams.length; j++) {
           var indexedParam = rpc_method.indexedParams[j];
-          var propType = indexedParam[0];
-          var _prop_type_check_result = propType(params, j, rpc_method.namespace, 'params[' + j + ']');
-          if (_prop_type_check_result instanceof TypeError) {   // not matched.
-            return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
+          var indexedPropType = indexedParam[0];
+          var _indexed_prop_type_check_result = indexedPropType(params, j, rpc_method.namespace, 'params[' + j + ']');
+          if (_indexed_prop_type_check_result instanceof TypeError) {   // not matched.
+            return new JsonRpcError(-32602, "Invalid params", _indexed_prop_type_check_result);
           }
           convertedParams[indexedParam[1]] = params[j];
         }
       } else if (_typeof_params === 'object') {
-        // console.log('===', _rpc_method.namedParams);
         for (var k = 0; k < rpc_method.namedParams.length; k++) {
           var namedParam = rpc_method.namedParams[k];
-          var propType = namedParam[0];
-          var _prop_type_check_result = propType(params, propType.typeProps.naming, rpc_method.namespace, 'params[' + JSON.stringify(propType.typeProps.naming) + ']');
-          if (_prop_type_check_result instanceof TypeError) {   // not matched.
-            return new JsonRpcError(-32602, "Invalid params", _prop_type_check_result);
+          var namedPropType = namedParam[0];
+          var _named_prop_type_check_result = namedPropType(params, namedPropType.typeProps.naming, rpc_method.namespace, 'params[' + JSON.stringify(namedPropType.typeProps.naming) + ']');
+          if (_named_prop_type_check_result instanceof TypeError) {   // not matched.
+            return new JsonRpcError(-32602, "Invalid params", _named_prop_type_check_result);
           }
-          // console.log('.....', namedParam[1], namedParam[0].typeProps.naming);
           convertedParams[namedParam[1]] = params[namedParam[0].typeProps.naming];
         }
       }
@@ -221,9 +231,9 @@ module.exports = function Repository() {
 
   /**
    *
-   * @param input
-   * @param injectable
-   * @returns {Promise|Promise<T>}
+   *
+   * @param rpc_method
+   * @param params
    * @private
    */
   var ___invoke = function (rpc_method, params) {
@@ -237,6 +247,14 @@ module.exports = function Repository() {
     })
   };
 
+  /**
+   *
+   *
+   * @param rpc_method
+   * @param input
+   * @param injectable
+   * @private
+   */
   var _perm_check = function (rpc_method, input, injectable) {
     return new Promise(function (resolve, reject) {
       if (injectable && typeof injectable.perm_check === 'function' && rpc_method.grantTo) {
@@ -256,6 +274,12 @@ module.exports = function Repository() {
     });
   };
 
+  /**
+   *
+   * @param input
+   * @param injectable
+   * @private
+   */
   var __invoke = function (input, injectable) {
     return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
       var _next = _lookup(input.method).then(function (rpc_method) {
@@ -265,7 +289,9 @@ module.exports = function Repository() {
               return {
                 jsonrpc: utils.JSON_RPC_VERSION,
                 id: input.id,
-                result: result === undefined ? null : result  // TODO SPEC要求 成功时必须, 然而, 返回null和undefined(不必须)的意义可能不同, null代表函数返回值是null, undefined代表函数没有返回值?
+                result: result
+                // TODO Difference from SPEC, As SPEC, MUST return something(!undefined) when invoked.
+                //      but return undefined mean a void call, return null mean the RPC return null.
               }
             });
           });
@@ -281,6 +307,13 @@ module.exports = function Repository() {
     }));
   };
 
+  /**
+   * Invoke batch RPC call.
+   *
+   * @param inputs
+   * @param injectable
+   * @private
+   */
   var __invoke_batch = function (inputs, injectable) {
     var outputs = [];
     if (inputs.length === 0) {
@@ -299,15 +332,17 @@ module.exports = function Repository() {
   };
 
   /**
+   * Wrap RPC result to SPEC's output.
+   *
+   * catch all error, convert to output.
    *
    * @param input
-   * @param invoke_thenable
-   * @returns {Promise|Promise<T>}
+   * @param thenable
    * @private
    */
-  var __wrap_output = function (input, invoke_thenable) {
+  var __wrap_output = function (input, thenable) {
     return new Promise(function (resolve, reject) {
-      invoke_thenable.then(function (output) {
+      thenable.then(function (output) {
         return resolve(output)
       }).catch(function (error) {
         return resolve({
@@ -320,12 +355,11 @@ module.exports = function Repository() {
   };
 
   /**
-   *
-   *
    * resolve(undefined) when notification call.
    * resolve or reject `spec` value when normal call.
+   *
    * @param input
-   * @returns {Promise<T>|Promise}
+   * @param injectable
    * @private
    */
   var _invoke = function (input, injectable) {
@@ -344,7 +378,7 @@ module.exports = function Repository() {
       return item.namespace;
     });
   };
-  _regsiter({
+  _register({
     namespace: 'system.listMethods',
     doc: 'This method returns an array of strings, one for each method supported by the RPC server.',
     sign: [PropTypes.array]
@@ -358,7 +392,7 @@ module.exports = function Repository() {
    */
   // var system_multicall = function () {
   // };
-  // _regsiter({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
+  // _register({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
 
   /**
    * This method takes one parameter, the name of a method implemented by the RPC server.
@@ -377,7 +411,7 @@ module.exports = function Repository() {
     }
     throw new Error('Method not found.[' + namespace + ']');
   };
-  _regsiter({
+  _register({
     namespace: 'system.methodSignature',
     doc: '',
     sign: [PropTypes.arrayOf(PropTypes.string), PropTypes.string.isRequiredNotNull]
@@ -400,12 +434,12 @@ module.exports = function Repository() {
       if (typeof(doc) === 'function') {
         return doc();   // 由于 文本 可能比较大, 可以通过(异步)`读取`函数获得
       } else {
-        return doc === undefined  ? null : doc;
+        return doc === undefined ? null : doc;
       }
     }
     throw new Error('Method not found.[' + namespace + ']');
   };
-  _regsiter({
+  _register({
     namespace: 'system.methodHelp',
     doc: 'This method takes one parameter, the name of a method implemented by the RPC server.\n\n' +
     'It returns a documentation string describing the  use of that method.\n' +
@@ -416,7 +450,7 @@ module.exports = function Repository() {
 
   //
   return {
-    regsiter: _regsiter,
+    register: _register,
     invoke: _invoke
   };
 

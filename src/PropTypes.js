@@ -1,11 +1,7 @@
-const utils = require('./utils');
-const TypeError = utils.TypeError;
+var utils = require('./utils'),
+  TypeError = utils.TypeError;
 
-/**
- * 参数类型.
- */
-
-const PropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
+var PropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 function createVoidTypeChecker() {
   function validate(props, propName, componentName, propFullName) {
@@ -57,7 +53,7 @@ function createDefaultTypeChecker(validate) {
     var checkType = function (props, propName, componentName, propFullName) {
       var propValue = props[propName];
       if (propValue === undefined) {  // 如果 prop 值没有设定时, 使用缺省值设置.
-        props[propName] = val;   // TODO deep clone
+        props[propName] = utils.clone(val);
       }
       return validate(props, propName, componentName, propFullName);
     };
@@ -71,7 +67,6 @@ function createDefaultTypeChecker(validate) {
 
 function createNamingTypeChecker(validate) {
   return function (naming) {
-    // TODO 检查 有效的命名
     function checkType(props, propName, componentName, propFullName, secret) {
       return validate(props, propName, componentName, propFullName);
     }
@@ -159,7 +154,7 @@ function createPrimitiveTypeChecker(expectedType) {
     return null;
   }
 
-  Object.assign(validate, {typeProps: {type: expectedType}})
+  Object.assign(validate, {typeProps: {type: expectedType}});
   validate.toJSON = function () {
     return expectedType;
   };
@@ -168,7 +163,7 @@ function createPrimitiveTypeChecker(expectedType) {
 
 function createAnyTypeChecker() {
   var validate = utils.emptyFunction.thatReturns(null);
-  Object.assign(validate, {typeProps: {type: 'any'}})
+  Object.assign(validate, {typeProps: {type: 'any'}});
   validate.toJSON = function () {
     return 'any';
   };
@@ -176,15 +171,15 @@ function createAnyTypeChecker() {
 }
 
 function createArrayOfTypeChecker(typeChecker) {
-  // TODO 判断 typeChecker 是有效的 PropTypeChecker
   if (typeof typeChecker !== 'function' || !typeChecker.typeProps) {
-    console.error('`createArrayOfTypeChecker` has invalid PropTypeChecker passed.');
+    // at compile time
+    throw new Error('`createArrayOfTypeChecker` has invalid PropTypeChecker passed. must be function.');
   }
   //
   function validate(props, propName, componentName, propFullName) {
-    if (typeof typeChecker !== 'function') {
-      return new TypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside arrayOf.');
-    }
+    // if (typeof typeChecker !== 'function') {
+    //   return new TypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside arrayOf.');
+    // }
     var propValue = props[propName];
     if (!Array.isArray(propValue)) {
       var propType = utils.getPropType(propValue);
@@ -200,17 +195,17 @@ function createArrayOfTypeChecker(typeChecker) {
   }
 
   //
-  Object.assign(validate, {typeProps: {type: 'arrayOf', of: typeChecker.typeProps}})
+  Object.assign(validate, {typeProps: {type: 'arrayOf', of: typeChecker.typeProps}});
   validate.toJSON = function () {
     return 'arrayOf(' + typeChecker.toJSON() + ')';
   };
-  // console.log('...', validate.typeProps);
   return createChainableTypeChecker(validate);
 }
 
 function createInstanceTypeChecker(expectedClass) {
   if (typeof expectedClass !== 'function') {
-    console.error('`createInstanceTypeChecker` has invalid expectedClass passed, expected a function of Class definition.');
+    // console.error('`createInstanceTypeChecker` has invalid expectedClass passed, expected a function of Class definition.');
+    throw new Error('`createInstanceTypeChecker` has invalid expectedClass passed, expected a function of Class definition.');
   }
   //
   function validate(props, propName, componentName, propFullName) {
@@ -223,7 +218,7 @@ function createInstanceTypeChecker(expectedClass) {
   }
 
   //
-  Object.assign(validate, {props: {type: 'instanceOf', of: expectedClass}})
+  Object.assign(validate, {props: {type: 'instanceOf', of: expectedClass}});
   // validate.toJSON = function () {
   //   return 'instanceOf(' + JSON.stringify(expectedClass) + ')';
   // }
@@ -231,15 +226,15 @@ function createInstanceTypeChecker(expectedClass) {
 }
 
 function createObjectOfTypeChecker(typeChecker) {
-  // TODO 判断 typeChecker 是有效的 PropTypeChecker
   if (typeof typeChecker !== 'function' || !typeChecker.typeProps) {
-    console.error('`createObjectOfTypeChecker` has invalid PropTypeChecker passed.');
+    // console.error('`createObjectOfTypeChecker` has invalid PropTypeChecker passed.');
+    throw new Error('`createObjectOfTypeChecker` has invalid PropTypeChecker passed.');
   }
   //
   function validate(props, propName, componentName, propFullName) {
-    if (typeof typeChecker !== 'function') {
-      return new TypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside objectOf.');
-    }
+    // if (typeof typeChecker !== 'function') {
+    //   return new TypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside objectOf.');
+    // }
     var propValue = props[propName];
     var propType = utils.getPropType(propValue);
     if (propType !== 'object') {
@@ -257,7 +252,7 @@ function createObjectOfTypeChecker(typeChecker) {
   }
 
   //
-  Object.assign(validate, {props: {type: 'objectOf', of: typeChecker.typeProps}})
+  Object.assign(validate, {props: {type: 'objectOf', of: typeChecker.typeProps}});
   validate.toJSON = function () {
     return 'objectOf(' + typeChecker.toJSON() + ')';
   };
@@ -267,14 +262,8 @@ function createObjectOfTypeChecker(typeChecker) {
 
 function createEnumTypeChecker(expectedValues) {
   if (!Array.isArray(expectedValues)) {
-    // TODO Invalid argument supplied to oneOf, expected an array.
-    console.error('`createEnumTypeChecker` has invalid expectedValues passed, expected an array.');
-    // // process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOf, expected an array.') : void 0;
-    // var _validate = utils.emptyFunction.thatReturns(null);
-    // _validate.toJSON = function () {
-    //   return 'oneOf(' + JSON.stringify(expectedValues) + ')';  // TODO Invalid argument supplied to oneOf, expected an array.
-    // }
-    // return _validate;
+    //console.error('`createEnumTypeChecker` has invalid expectedValues passed, expected an array.');
+    throw new Error('Invalid argument supplied to oneOf, expected an array');
   }
   //
   function validate(props, propName, componentName, propFullName) {
@@ -289,7 +278,7 @@ function createEnumTypeChecker(expectedValues) {
   }
 
   //
-  Object.assign(validate, {typeProps: {type: 'oneOf', of: expectedValues}})
+  Object.assign(validate, {typeProps: {type: 'oneOf', of: expectedValues}});
   validate.toJSON = function () {
     return 'oneOf(' + JSON.stringify(expectedValues) + ')';
   };
@@ -297,15 +286,13 @@ function createEnumTypeChecker(expectedValues) {
 }
 
 function createUnionTypeChecker(arrayOfTypeCheckers) {
-  // TODO 判断 typeChecker 是有效的 PropTypeChecker
   if (!Array.isArray(arrayOfTypeCheckers)) {
-    // TODO Invalid argument supplied to oneOfType, expected an array of PropTypeChecker.
-    console.error('`createUnionTypeChecker` has invalid PropTypeChecker passed, expected an array.');
+    throw new Error('Invalid argument supplied to oneOfType, expected an array.');
   }
   for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
     var typeChecker = arrayOfTypeCheckers[i];
     if (typeof typeChecker !== 'function' || !typeChecker.typeProps) {
-      console.error('`createUnionTypeChecker` has invalid PropTypeChecker passed.[' + i + ']');
+      throw new Error('Invalid argument supplied to oneOfType[' + i + '], expected an value of PropTypeChecker.');
     }
   }
   //
@@ -334,11 +321,11 @@ function createUnionTypeChecker(arrayOfTypeCheckers) {
  * @param strict when true, not allow no specified property.
  */
 function createShapeTypeChecker(shapeTypes, strict) {
-  // TODO 判断 typeChecker 是有效的 PropTypeChecker
   for (var key in shapeTypes) {
     var typeChecker = shapeTypes[key];
     if (typeof typeChecker !== 'function' || !typeChecker.typeProps) {
-      console.error('`createShapeTypeChecker` has invalid shapeTypes passed.[' + key + ']');
+      // console.error('`createShapeTypeChecker` has invalid shapeTypes passed.[' + key + ']');
+      throw new Error('`createShapeTypeChecker` has invalid shapeTypes passed[' + key + ']. expected an function.');
     }
   }
   //
@@ -362,7 +349,7 @@ function createShapeTypeChecker(shapeTypes, strict) {
   }
 
   //
-  Object.assign(validate, {typeProps: {type: 'shape', of: shapeTypes}})
+  Object.assign(validate, {typeProps: {type: 'shape', of: shapeTypes}});
   validate.toJSON = function () {
     return 'shape(' + JSON.stringify(shapeTypes) + ')';
   };

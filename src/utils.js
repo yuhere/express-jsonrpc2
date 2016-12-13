@@ -174,6 +174,7 @@ module.exports = {
   JSON_RPC_VERSION: '2.0',
   //
   emptyFunction: emptyFunction,
+  clone: require('./cloneDeep'),
   is: is,
   isSymbol: isSymbol,
   getPropType: getPropType,
