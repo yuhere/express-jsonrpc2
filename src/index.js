@@ -83,15 +83,19 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
  */
 function JsonRPC(_repository, mk_injectable) {
   /**
-   * POST 处理.
+   * Handle POST.
    *
-   * 1, 解析 req.body, 转换成 json 对象;
-   * 2, 检查 JSON-RPC SPEC;
-   * 3, 分发 & 调用 具体的实现;
+   * 1, parse req.body to JSON object;
+   * 2, check JSON-RPC SPEC;
+   * 3, dispatch & invoke
    */
   var router = express.Router();
   router.post('/', _mk_rpc_dispatch(_repository, mk_injectable));
-  // public static resources
+  /**
+   * Handle GET.
+   *
+   * show the debug page
+   */
   router.use(express.static(path.join(__dirname, '..', 'src', 'public')));
   return router;
 }

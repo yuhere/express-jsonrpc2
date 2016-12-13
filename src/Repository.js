@@ -171,14 +171,14 @@ module.exports = function Repository() {
       var _typeof_params = utils.getPropType(params);
       var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params || {}).length;
       //
-      if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // 命名方式调用, 但RPC函数不支持命名调用
+      if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // named call, but the RPC not support.
         return new JsonRpcError(-32602, "Invalid params", 'Invalid invoke style `named style` suppled to `' + rpc_method.namespace + '`, excepted `positional style`.');
       }
       //
       if (_typeof_params === 'array' && paramsLength !== rpc_method.indexedParams.length) {   // parameter count not match
         return new JsonRpcError(-32602, "Invalid params", 'Invalid parameters count. ' + ('`' + paramsLength + '` parameter(s) supplied to `' + rpc_method.namespace + '`, expected ') + ('`' + rpc_method.indexedParams.length + '` parameter(s).'));
       }
-      // 复制 & 注入 传入的参数
+      // Copy & Inject parameters
       var convertedParams = new Array(rpc_method.paramsCount);
       // process injectable parameters
       for (var i = 0; i < rpc_method.injectableParams.length; i++) {
