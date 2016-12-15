@@ -8,7 +8,7 @@ var _repository = new Repository();
 _repository.register({
   namespace: 'unit.subtract',
   doc: '',
-  sign: [PropTypes.void, PropTypes.number.naming('minuend').default(0), PropTypes.number.naming('subtrahend')]
+  sign: [PropTypes.void, PropTypes.number.naming('minuend'), PropTypes.number.naming('subtrahend')]
 }, function (a, b) {
   return a - b;
 });

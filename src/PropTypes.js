@@ -31,40 +31,6 @@ function createInjectableChecker(injectable) {
   return validate;
 }
 
-function createDefaultTypeChecker(validate) {
-  return function (val) {
-    /**
-     * 参数位置调用时没有意义,
-     * 1, 会检查传入的params长度, 长度与签名长度不匹配时, 会抛出-32602:Invalid params.错误;
-     * 2, 即使长度匹配了, JSON.stringify会将其转换成null, 而null, 很多时候被认为正常的参数;
-     * JSON.stringify([undefined, undefined])
-     * >>> "[null,null]"
-     *
-     * 只有在命名调用时才有意义,
-     * 1, 对象的属性, 在stringify时被忽略; 这种情况, 为期
-     * JSON.stringify({param1:'a', param2: undefined})
-     * >>> "{"param1":"a"}"   b 被舍去了
-     */
-      // TODO default 的设置是否合法, 在运行时检查, 但是否需要在启动时给出 wran ??
-    var _valid_default = validate({default: val}, 'default', 'default(' + JSON.stringify(val) + ')', validate.vType);
-    if (_valid_default !== null) {
-      console.error('PropTypes.createDefaultTypeChecker.default.', _valid_default);
-    }
-    var checkType = function (props, propName, componentName, propFullName) {
-      var propValue = props[propName];
-      if (propValue === undefined) {  // 如果 prop 值没有设定时, 使用缺省值设置.
-        props[propName] = utils.clone(val);
-      }
-      return validate(props, propName, componentName, propFullName);
-    };
-    Object.assign(checkType, {typeProps: Object.assign({}, validate.typeProps, {default: val})});
-    checkType.toJSON = function () {
-      return validate.toJSON() + '.default(' + JSON.stringify(val) + ')';
-    };
-    return checkType
-  }
-}
-
 function createNamingTypeChecker(validate) {
   return function (naming) {
     function checkType(props, propName, componentName, propFullName, secret) {
@@ -73,7 +39,6 @@ function createNamingTypeChecker(validate) {
 
     var chainedCheckType = checkType.bind(null);
     Object.assign(chainedCheckType, {typeProps: Object.assign({}, validate.typeProps, {naming: naming})});
-    chainedCheckType.default = createDefaultTypeChecker(chainedCheckType);
     chainedCheckType.toJSON = function () {
       return validate.toJSON() + '.named(' + naming + ')';
     };
