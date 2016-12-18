@@ -53,7 +53,7 @@ var _read_json = function (req, res) {
  * @returns {Function}
  * @private
  */
-function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
+function _mk_rpc_dispatch(rpc_repository, mk_injectable, invoke_error_trans) {
   return function (req, res, next) {
     // console.log('_rpc_dispatch...', req.rpc);
     return _read_json(req, res).then(function (input) {
@@ -66,7 +66,7 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
         response: res,
         repository: rpc_repository
       };
-      return rpc_repository.invoke(input, injectable).then(function (output) {
+      return rpc_repository.invoke(input, injectable, invoke_error_trans).then(function (output) {
         return res.status(200).json(output).end();
       })
     }).catch(function (output) {
@@ -81,7 +81,7 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
  * @returns {*}
  * @constructor
  */
-function JsonRPC(_repository, mk_injectable) {
+function JsonRPC(_repository, mk_injectable, invoke_error_trans) {
   /**
    * Handle POST.
    *
@@ -90,7 +90,7 @@ function JsonRPC(_repository, mk_injectable) {
    * 3, dispatch & invoke
    */
   var router = express.Router();
-  router.post('/', _mk_rpc_dispatch(_repository, mk_injectable));
+  router.post('/', _mk_rpc_dispatch(_repository, mk_injectable, invoke_error_trans));
   /**
    * Handle GET.
    *

@@ -236,12 +236,16 @@ module.exports = function Repository() {
    * @param params
    * @private
    */
-  var ___invoke = function (rpc_method, params) {
+  var ___invoke = function (rpc_method, params, invoke_error_trans) {
     return new Promise(function (resolve, reject) {
       // apply the function 实际调用 引发的错误. 未知的错误.
       //    utils.promisify(rpc_method.func, rpc_method).apply(null, params);
       rpc_method.func.apply(rpc_method, params).then(resolve).catch(function (err) {
-        console.error(-32603, "Internal JSON-RPC error when invoke method", err);
+        process.env.NODE_ENV !== 'production' && console.error("Internal JSON-RPC error when invoke method", err.message, err.stack);
+        var transformed_error = invoke_error_trans && invoke_error_trans(err);
+        if (transformed_error && transformed_error instanceof JsonRpcError) {
+          return reject(transformed_error);
+        }
         return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", err));
       });
     })
@@ -280,12 +284,12 @@ module.exports = function Repository() {
    * @param injectable
    * @private
    */
-  var __invoke = function (input, injectable) {
+  var __invoke = function (input, injectable, invoke_error_trans) {
     return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
       var _next = _lookup(input.method).then(function (rpc_method) {
         return _perm_check(rpc_method, input, injectable).then(function (rpc_method) {
           return _convert(input.params, injectable, rpc_method).then(function (params) {
-            return ___invoke(rpc_method, params).then(function (result) {
+            return ___invoke(rpc_method, params, invoke_error_trans).then(function (result) {
               return {
                 jsonrpc: utils.JSON_RPC_VERSION,
                 id: input.id,
@@ -314,14 +318,14 @@ module.exports = function Repository() {
    * @param injectable
    * @private
    */
-  var __invoke_batch = function (inputs, injectable) {
+  var __invoke_batch = function (inputs, injectable, invoke_error_trans) {
     var outputs = [];
     if (inputs.length === 0) {
       return __wrap_output(undefined,
         Promise.reject(new JsonRpcError(-32600, "Invalid Request", "RPC call with an empty array.")));
     }
     return utils.promiseEach(inputs, function (input, idx) {
-      return __invoke(input, injectable).then(function (output) {
+      return __invoke(input, injectable, invoke_error_trans).then(function (output) {
         output !== undefined && outputs.push(output);
       })
     }).then(function () {
@@ -362,11 +366,11 @@ module.exports = function Repository() {
    * @param injectable
    * @private
    */
-  var _invoke = function (input, injectable) {
+  var _invoke = function (input, injectable, invoke_error_trans) {
     if (Array.isArray(input)) {
-      return __invoke_batch(input, injectable);
+      return __invoke_batch(input, injectable, invoke_error_trans);
     } else {
-      return __invoke(input, injectable);
+      return __invoke(input, injectable, invoke_error_trans);
     }
   };
 
