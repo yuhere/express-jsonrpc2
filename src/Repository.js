@@ -267,10 +267,18 @@ module.exports = function Repository() {
           if (check_result === true) {
             return resolve(rpc_method);
           } else {
-            return reject(new JsonRpcError(-32604, "Permission denied", "one of " + JSON.stringify(rpc_method.grantTo) + " is necessary."));
+            if (check_result instanceof JsonRpcError) {
+              return reject(check_result);
+            } else {
+              return reject(new JsonRpcError(-32604, "Permission denied", "one of " + JSON.stringify(rpc_method.grantTo) + " is necessary."));
+            }
           }
         }).catch(function (err) {
-          return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when perm_check method", err));
+          if (err instanceof JsonRpcError) {
+            return reject(err);
+          } else {
+            return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when perm_check method", err));
+          }
         });
       } else {
         return resolve(rpc_method); // perm_check or grantTo undefined, do not perm_check.
