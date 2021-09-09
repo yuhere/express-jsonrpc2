@@ -419,7 +419,12 @@ module.exports = function Repository() {
     });
     if (idx !== -1) {
       var descriptor = _repository[idx];
-      return descriptor.paramsSignature;
+      return descriptor.paramsSignature.map(function(s) {
+          if (s.toJSON) {
+              return s.toJSON();
+          }
+          return s;
+      });
     }
     throw new Error('Method not found.[' + namespace + ']');
   };

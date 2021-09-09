@@ -1,11 +1,11 @@
 {
   "name": "express-jsonrpc2",
-  "version": "2.0.14",
+  "version": "2.0.15",
   "private": false,
   "description": "JSON-RPC 2 for express.",
   "engines": {
-    "node": "^4.4.5",
-    "npm": "^3.10.9"
+    "node": "^14.17.0",
+    "npm": "^6.14.13"
   },
   "scripts": {
     "cover": "istanbul cover _mocha",
@@ -32,6 +32,8 @@
     "supertest": "2.0.1"
   },
   "dependencies": {
+    "type-is": "1.6.18",
+    "bson": "4.5.1",
     "express": "4.13.3",
     "body-parser": "1.15.1"
   }
