@@ -1,0 +1,59 @@
+package jsonrpc2.protocol;
+syntax = "proto3";
+
+message RPCError {
+    int32 code = 1;
+    string message = 2;
+}
+
+message RPCIn {
+    string id = 1;
+    string protocol = 2;
+    string method = 3;
+    repeated bytes params = 4;
+}
+
+message RPCOut {
+    string id = 1;
+    string protocol = 2;
+    string method = 3;
+    RPCError error = 4;
+    bytes result = 5;
+}
+
+message Void {} 
+// https://github.com/protocolbuffers/protobuf/blob/v3.1.0/src/google/protobuf/wrappers.proto#L31-L34
+
+message NumberValue {
+    double value = 1;
+}
+
+message BooleanValue {
+    bool value = 1;
+}
+
+message StringValue {
+    string value = 1;
+}
+
+
+// proto    js
+// -------- -------
+// double   number  
+// float    number  
+// int32    number  
+// int64    number  
+// uint32   number  
+// uint64   number  
+// sint32   number  
+// sint64   number  
+// fixed32  number  
+// fixed64  number  
+// sfixed32 number  
+// sfixed64 number  
+// bool     boolean 
+// string   string  
+// bytes    Uint8Array 
+
+
+

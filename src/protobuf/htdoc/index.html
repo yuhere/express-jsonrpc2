@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title> JSONRPC – Debuger </title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" href="style.css" type="text/css"/>
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/protobufjs@6.11.2/dist/protobuf.min.js"></script>
+    <script type="text/javascript" src="xhr-stub.js"></script>
+    <script type="text/javascript" src="protobuf_rpc.js"></script>
+    <script type="text/javascript" src="main.js"></script>
+</head>
+<body>
+<div id="wrapper">
+    <div id="main">
+        <div id="ctxtnav" class="nav">
+            <h2>Context Navigation</h2>
+            <hr/>
+        </div>
+        <div id="content" class="wiki">
+            <div id="debug_tool">
+                <div id="methodList" class="rpcview">
+                    <fieldset class="rpcfield">
+                        <legend><a href="javascript:build_rpc_tv();void(0);" title="点击进行刷新">RPC availabled：</a></legend>
+                        <table class="listing dirlist" id="dirlist">
+                            <tbody></tbody>
+                        </table>
+                    </fieldset>
+                </div> <!-- end methodList -->
+                <div id="tabcontent" class="rpcdview">
+                    <fieldset class="rpcfield">
+                        <legend>Help</legend>
+                        <pre id="methodHelp" class="help"></pre>
+                    </fieldset>
+                    <fieldset class="rpcfield">
+                        <legend>Signature</legend>
+                        <pre id="methodSignature" class="help"></pre>
+                    </fieldset>
+                    <fieldset class="rpcfield">
+                        <legend>Parameters for Test <span id="methodName"></span></legend>
+                        <form id="accountsconfig" class="mod" method="post">
+                            <p><textarea id="methodTestInput" class="rpcinput" name="text" cols="80"
+                                         rows="3">[]</textarea></p>
+                            <div class="buttons">
+                                <input type="button" name="save" value="execute" onclick="javascript:doTest();"/>
+                            </div>
+                            <p><textarea id="methodTestOutput" class="rpcinput" name="text" cols="80"
+                                         rows="3"></textarea></p>
+                        </form>
+                    </fieldset>
+                </div> <!-- end tabcontent -->
+            </div> <!-- end debug_tool -->
+        </div> <!-- end content -->
+    </div> <!-- end main -->
+
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+package test;
+syntax = "proto3";
+
+message Struct1 {
+    string f1 = 1;
+    double f2 = 2;
+    double f3 = 3;
+    double f4 = 4;
+    double f5 = 5;
+    double f6 = 6;
+    double f7 = 7;
+    double f8 = 8;
+}
