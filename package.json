@@ -1,29 +1,16 @@
 {
-  "name": "express-jsonrpc2",
-  "version": "2.0.15",
-  "private": false,
+  "author": {
+    "name": "yuhere@gmail.com"
+  },
+  "bugs": {
+    "url": "https://github.com/yuhere/express-jsonrpc2/issues"
+  },
+  "dependencies": {
+    "bson": "4.5.1",
+    "body-parser": "1.15.1",
+    "express": "4.13.3"
+  },
   "description": "JSON-RPC 2 for express.",
-  "engines": {
-    "node": "^14.17.0",
-    "npm": "^6.14.13"
-  },
-  "scripts": {
-    "cover": "istanbul cover _mocha",
-    "coverage": "istanbul cover _mocha --report lcovonly -- -R spec && codecov",
-    "test": "mocha --reporter spec",
-    "start": "node debug/index.js"
-  },
-  "main": "src/index.js",
-  "files": [
-    "src",
-    "README.md"
-  ],
-  "author": "yuhere@gmail.com",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yuhere/express-jsonrpc2"
-  },
   "devDependencies": {
     "codecov": "1.0.1",
     "istanbul": "0.4.5",
@@ -31,10 +18,28 @@
     "should": "11.1.1",
     "supertest": "2.0.1"
   },
-  "dependencies": {
-    "type-is": "1.6.18",
-    "bson": "4.5.1",
-    "express": "4.13.3",
-    "body-parser": "1.15.1"
-  }
+  "engines": {
+    "node": "^4.4.5",
+    "npm": "^3.10.9"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "homepage": "https://github.com/yuhere/express-jsonrpc2#readme",
+  "license": "MIT",
+  "main": "src/index.js",
+  "name": "express-jsonrpc2",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yuhere/express-jsonrpc2.git"
+  },
+  "scripts": {
+    "cover": "istanbul cover _mocha",
+    "coverage": "istanbul cover _mocha --report lcovonly -- -R spec && codecov",
+    "start": "node debug/index.js",
+    "test": "mocha --reporter spec"
+  },
+  "version": "2.1.14"
 }

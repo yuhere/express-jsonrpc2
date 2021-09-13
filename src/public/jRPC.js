@@ -3,7 +3,7 @@
  * sAPI.call("stock.get_days_data", "arg1", "arg2", "arg3", "arg4").done(function(ret){
  */
 
-function jRPC(url = "", use = "bson") {
+function jRPC(url = "", use = "json") {
     /* Keep track of our ID sequence */
     let sequence = 1;
     let coder = {
@@ -14,10 +14,10 @@ function jRPC(url = "", use = "bson") {
         }
     };
     async function call(method, ...params) {
-        let id = (sequence++);
+        let id = (sequence++) + "";
         let tosend = {jsonrpc: '2.0', method: method, params: params, id: id};
         // Step 1: start the fetch and obtain a reader
-        let res = await fetch("", {
+        let res = await fetch(url, {
             "headers": {"content-type": coder["contentType"]},
             "body": coder.encode(tosend),
             "method": "POST"
@@ -51,7 +51,7 @@ function jRPC(url = "", use = "bson") {
         // console.log(chunksAll);
         let chunksAll = new Uint8Array(await res.arrayBuffer());
         let out = coder.decode(chunksAll);
-        console.log("out=", out);
+        // console.log("out=", out);
         let {error, result} = out;
         if (error) {
             let msg = (error.code ? error.code + ":" : "")
@@ -66,4 +66,4 @@ function jRPC(url = "", use = "bson") {
     };
     // 
     return {call};
-};
+}

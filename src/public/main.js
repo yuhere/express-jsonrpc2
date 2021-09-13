@@ -56,22 +56,22 @@ function mkRPCTVNode(fullMethodName, level) {
 };
 
 async function doTest() {
-        console.log($('#jrpc').attr("checked"));
-if ($('#methodName').text() == "") {
-} else {
-    try {
-        let jrpc = $('#jrpc').attr("checked");
-        let xrpc = jrpc ? j_rpc : rpc;
-        $("#methodTestOutput").val("");
-        let mtds0 = await xrpc.call.apply(xrpc.call, [$('#methodName').text()].concat(JSON.parse($('#methodTestInput').val())));
-        // $("#methodTestOutput").val(JSON.stringify(mtds0));
-        console.log(mtds0);
-    } catch (e) {
-        $("#methodTestOutput").val(JSON.stringify(e));
-        console.error(e);
+    // console.log($('#jrpc').attr("checked"));
+    if ($('#methodName').text() == "") {
+    } else {
+        try {
+            let jrpc = $('#jrpc').attr("checked");
+            let xrpc = jrpc ? j_rpc : rpc;
+            $("#methodTestOutput").val("");
+            let mtds0 = await xrpc.call.apply(xrpc.call, [$('#methodName').text()].concat(JSON.parse($('#methodTestInput').val())));
+            // $("#methodTestOutput").val(JSON.stringify(mtds0));
+            console.log(mtds0);
+        } catch (e) {
+            $("#methodTestOutput").val(JSON.stringify(e));
+            console.error(e);
+        }
     }
 }
-};
 
 async function fetchDetail(fullMethodName) {
     try {

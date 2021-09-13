@@ -9,13 +9,197 @@ var path = require('path'),
 const BSON = require("bson");
 const typeis = require('type-is')
 
+const stream = require('stream');
+const { Readable } = stream;
+
+
+function _stringify(input, res) {
+    let buffer = "";
+    function wb(a, f=false) {
+        buffer += a;
+    }
+    let wt;
+    function _walk(input, lv = 0) {
+        let type = typeof input;
+        if (type === "undefined") {
+            wb("undefined");
+        } else if (type === "string") {
+            wb(JSON.stringify(input));
+            // wb("\"" + input + "\"");
+        } else if (type === "number") {
+            wb(input+"");
+        } else if (type === "object") {
+            if (input === null) {
+                wb("null");
+            } else if (Array.isArray(input)) {
+                wb("[");
+                for (let i = 0;i < input.length;i++) {
+                    if (i!==0) wb(",");
+                    // 
+                    _walk(input[i], lv+1);
+                }
+                wb("]");
+            } else {  // 
+                wb("{");
+                let i = 0;
+                for (let key in input) {
+                    let val = input[key];
+                    if (val!==undefined) {
+                        if (i!==0) wb(",");
+                        wb("\"" + key + "\"" + ":");
+                        // 
+                        _walk(val, lv+1);
+
+                        i++
+                    }
+                }
+                wb("}");
+            }
+        }
+        //
+    }
+    _walk(input);
+    return buffer;
+}
+
+async function pipe_stringify(input, res) {
+    let buffer = "";
+    function wb(a, f=false) {
+        buffer += a;
+        if (buffer.length>=1024*128 || f) {
+            // console.log(buffer.length, f);
+            // if (f) console.log(buffer);
+            let t = buffer;
+            buffer = "";
+            return t;
+        }
+        return ""
+    }
+    
+    let wt;
+    async function* _walk(input, lv = 0) {
+        let type = typeof input;
+        if (type === "undefined") {
+            if (wt = wb("undefined")) yield (wt)
+        } else if (type === "string") {
+            if (wt = wb(JSON.stringify(input))) yield (wt)
+        } else if (type === "number") {
+            if (wt = wb(JSON.stringify(input))) yield (wt)
+        } else if (type === "object") {
+            if (input === null) {
+                if (wt = wb("null")) yield (wt)
+            } else if (Array.isArray(input)) {
+                if (wt = wb("[")) yield (wt)
+                for (let i = 0;i < input.length;i++) {
+                    if (i!==0) if (wt = wb(",")) yield (wt)
+                    // 
+                    let gen = await _walk(input[i], lv+1);
+                    for (let it = await gen.next();!it.done;it = await gen.next()) {
+                        if (wt = wb(it.value)) yield (wt)
+                    }
+                }
+                if (wt = wb("]")) yield (wt)
+            } else if (typeof input.next === "function" /* Generator */) {
+                if (wt = wb("[")) yield (wt)
+                for (let ii=0, {done, value} = await input.next();!done;{done, value} = await input.next(), ii++) {
+                    if (ii!==0) if (wt = wb(",")) yield (wt)
+                    // 
+                    let gen = await _walk(value, lv+1);
+                    for (let it = await gen.next();!it.done;it = await gen.next()) {
+                        if (wt = wb(it.value)) yield (wt)
+                    }
+                }
+                if (wt = wb("]")) yield (wt)
+            // TODO } else if (input instanceof Promise || input.then === "function" /* Promise */) {
+            } else {  // 
+                if (wt = wb("{")) yield (wt)
+                let i = 0;
+                for (let key in input) {
+                    let val = input[key];
+                    if (val!==undefined) {
+                        if (i!==0) if (wt = wb(",")) yield (wt)
+                        if (wt = wb(JSON.stringify(key) + ":")) yield (wt)
+                        // 
+                        let gen = await _walk(val, lv+1);
+                        for (let it = await gen.next();!it.done;it = await gen.next()) {
+                            if (wt = wb(it.value)) yield (wt)
+                        }
+                        i++
+                    }
+                }
+                if (wt = wb("}")) yield (wt)
+            }
+        }
+        //
+        if (lv === 0) if (wt = wb("", true)) yield (wt)
+    }
+    // 为什么不直接用 write 而用 pipe？ 
+    // 原因是 write 在不调用 end 之前（即使 flush 被调用），不会真正的写数据，根据实测 pipe 可以。
+    // 如果 write 可以工作，write 应该是最好的方法。
+    //
+    let /*AsyncGenerator*/ ag = await _walk(input);
+    let readable = Readable.from(ag);
+    let bytesSent = 0;
+    readable.on('data', function(chunks) {
+        if (bytesSent === 0) {   // before send to response.
+            res.setHeader('Cache-Control', "no-cache");
+            res.setHeader('Content-Type', 'application/json');
+        }
+        bytesSent = bytesSent + chunks.length;
+        // console.log((bytesSent / 1024 / 1024).toFixed(2));
+        // console.log(typeof chunks);
+    });
+    readable.on('end', function() {
+        // console.log("pipe_stringify1...end...");
+        res.end();
+    });
+    readable.on('error', function (error) {
+        console.error(error);
+        res.status(500).end();
+    });
+    readable.pipe(res, {end: false});
+    
+    // return res;
+}
+
+// "json-stream-stringify" 效果不好，没有缓冲区，传输非常碎
+// const JsonStreamStringify = require("json-stream-stringify");
+// 
+// function pipe001(input, res) {
+//     
+//     let jStream = new JsonStreamStringify(input);
+//     jStream.pipe(res, {end: false});
+//     
+//     // let readable = Readable.from(await _walk(input));
+//     var bytesSent = 0;
+//     jStream.on('data', function(chunks) {
+//         if (bytesSent === 0) {   // before send to response.
+//             // res.setHeader('Cache-Control', "no-cache");
+//             // res.setHeader('Content-Type', 'application/json');
+//         }
+//         bytesSent = bytesSent + chunks.length;
+//         // console.log((bytesSent / 1024 / 1024).toFixed(2));
+//         // console.log(chunks.length);
+//     });
+//     jStream.on('end', function() {
+//         // console.log("end...");
+//         res.end();
+//     });
+//     jStream.on('error', function (error) {
+//         console.error(error);
+//         res.status(500).end();
+//     });
+//     jStream.pipe(res, {end: false});
+// }
+
+
 /**
  *
  * @param rpc_repository
  * @returns {Function}
  * @private
  */
-function _mk_rpc_dispatch(rpc_repository, mk_injectable, invoke_error_trans) {
+function _mk_rpc_dispatch(rpc_repository, mk_injectable) {
   //
   var _json_parser = bodyParser.json({
     limit: '1mb',
@@ -105,9 +289,13 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable, invoke_error_trans) {
                              response: res,
                              repository: rpc_repository
                            };
-            let output = await rpc_repository.invoke(input, injectable, invoke_error_trans)
-            return res.status(200).json(output).end();
+            let output = await rpc_repository.invoke(input, injectable);
+            return pipe_stringify(output, res);
+            // return res.status(200).end();
+            // return res.status(200).json(output).end();
+            // return res.status(200).send(_stringify(output)).end();
         } catch (e) {
+            console.error(e);
             return res.status(200).json({error: { code: -32701, message: "Parse error" }}).end();
         }
     }
@@ -123,7 +311,7 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable, invoke_error_trans) {
                              response: res,
                              repository: rpc_repository
                            };
-            let output = await rpc_repository.invoke(input, injectable, invoke_error_trans)
+            let output = await rpc_repository.invoke(input, injectable)
             let rawOutput = BSON.serialize(output);
             return res.status(200).send(rawOutput).end();
         } catch (e) {
@@ -153,7 +341,7 @@ function _mk_rpc_dispatch(rpc_repository, mk_injectable, invoke_error_trans) {
  * @returns {*}
  * @constructor
  */
-function JsonRPC(_repository, mk_injectable, invoke_error_trans) {
+function JsonRPC(_repository, mk_injectable) {
   /**
    * Handle POST.
    *
@@ -162,7 +350,7 @@ function JsonRPC(_repository, mk_injectable, invoke_error_trans) {
    * 3, dispatch & invoke
    */
   var router = express.Router();
-  router.post('/', _mk_rpc_dispatch(_repository, mk_injectable, invoke_error_trans));
+  router.post('/', _mk_rpc_dispatch(_repository, mk_injectable));
   /**
    * Handle GET.
    *

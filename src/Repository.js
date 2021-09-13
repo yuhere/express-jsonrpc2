@@ -1,4 +1,4 @@
-var utils = require('./utils'),
+const utils = require('./utils'),
   PropTypes = require('./PropTypes'),
   JsonRpcError = utils.RpcError,
   TypeError = utils.TypeError;
@@ -10,465 +10,320 @@ var utils = require('./utils'),
  */
 module.exports = function Repository() {
 
-  var _repository = [];
-
-  /**
-   * register RPC to repository.
-   *
-   * @param descriptor
-   * @param func
-   * @private
-   */
-  var _register = function (descriptor, func) {
+    let _repository = [];
     // console.log('_register', _descriptor);
-    var mk_descriptor = function (descriptor, func) {
-      if (!Array.isArray(descriptor.sign) || descriptor.sign.length === 0) { // throw
-
-      }
-      if (!descriptor.namespace) {
-
-      }
-      //
-      var _signs = Array.prototype.slice.call(descriptor.sign, 0); // convert to a javascript array.
-      //
-      var paramsSignature = [_signs.shift()],
-        indexedParams = [],
-        injectableParams = [],
-        namedParams = [];
-      var namedSignature = [],
-        indexedSignature = [];
-      for (var paramsIdx = 0; paramsIdx < _signs.length; paramsIdx++) {
-        var _propType = _signs[paramsIdx];
-
-        if (_propType.typeProps.hasOwnProperty('injectable')) {
-          injectableParams.push([_propType, paramsIdx]);
-        } else {
-          if (_propType.typeProps.hasOwnProperty('naming')) {
-            var _exists_idx = namedParams.findIndex(function (item, idx) {
-              return item[0].typeProps.naming === _propType.typeProps.naming;
-            });
-            if (_exists_idx !== -1) {
-              throw new Error('Duplicate named parameter[' + _propType.typeProps.naming + '] for `' + descriptor.namespace + '`.');
-            } else {
-              namedParams.push([_propType, paramsIdx]);
+    function mk_descriptor(descriptor, func) {
+        if (!descriptor.namespace) {  // TODO regexp
+            throw new Error("please specify a namespace for this method.");
+        }
+        if (!Array.isArray(descriptor.sign)) {
+            throw new Error("the sign should be a array of PropTypes.Type.");
+        }
+        //
+        let _signs = Array.prototype.slice.call(descriptor.sign, 0); // copy a javascript array.
+        if (_signs.length === 0) _signs.unshift(PropTypes.void);
+        //
+        let paramsSignature = [],
+            indexedParams = [],
+            injectableParams = [];
+        for (let i=0;i<_signs.length;i++) {
+            let _signType = _signs[i];
+            let {typeProps} = _signType;
+            if (!typeProps || !typeProps["type"]) {
+                throw new Error("Invalid sign[" + i + "] for `" + descriptor.namespace + "`, signature should be a PropTypes.Type.");
             }
-          }
-          indexedParams.push([_propType, paramsIdx]);
-          paramsSignature.push(_propType);
+            let {type} = typeProps;
+            if (type === "injectable") {
+                if (i===0) throw new Error("Invalid sign[" + i + "], the first signature could not be an injectable.");
+                injectableParams.push([_signType, i - 1]);
+            } else {
+                if (i!==0) indexedParams.push([_signType, i-1]);
+                paramsSignature.push(_signType);
+            }
         }
-      }
-      //
-      if (namedParams.length > 0 && namedParams.length !== indexedParams.length) {
-        throw new Error('Named call must make name for all parameters. `' + descriptor.namespace + '`.');
-      }
-      //
-      var _grantTo = descriptor.grantTo;
-      if (_grantTo !== undefined) {
-        if (typeof _grantTo === 'string') {
-          _grantTo = [_grantTo];
-        } else {
-          var _grant_to_checker = PropTypes.arrayOf(PropTypes.string);
-          var _grant_to_check_result = _grant_to_checker({grantTo: _grantTo}, 'grantTo', 'register', 'descriptor.grantTo');
-          if (_grant_to_check_result !== null) {
-            throw _grant_to_check_result;
-          }
+        //
+        let _grantTo = descriptor.grantTo;
+        if (_grantTo !== undefined) {
+            if (typeof _grantTo === 'string') {
+                _grantTo = [_grantTo];
+            } else {
+                if (!Array.isArray(_grantTo)) {
+                    throw new Error("grantTo should be an array or string.");
+                }
+                for (let i=0;i<_grantTo.length;i++) {
+                    if (typeof _grantTo !== 'string') {
+                        throw new Error("grantTo should be an array of string.");
+                    }
+                }
+            }
         }
-      }
-      //
-      return {
-        canNameableCall: namedParams.length !== 0,
-        indexedParams: indexedParams,
-        namedParams: namedParams,
-        injectableParams: injectableParams,
-        paramsCount: indexedParams.length + injectableParams.length,
-        paramsSignature: paramsSignature,     // exclude injectable parameters, include returnType
-        namespace: descriptor.namespace,
-        grantTo: _grantTo,
-        doc: descriptor.doc,
-        func: utils.promisify(func, this)
-      }
+        //
+        return {
+          indexedParams: indexedParams,
+          injectableParams: injectableParams,
+          paramsCount: indexedParams.length + injectableParams.length,
+          paramsSignature: paramsSignature,     // exclude injectable parameters, include returnType
+          namespace: descriptor.namespace,
+          grantTo: _grantTo,
+          doc: descriptor.doc,
+          func: func
+        }
     };
-    _repository.push(mk_descriptor(descriptor, func))
-  };
 
-  var _catch_errors = function (func, scope) {
-    return function () {
-      try {
-        return func.apply(scope || func, arguments);
-      } catch (error) {
-        return error;
-      }
-    }
-  };
+    /**
+     * register RPC to repository.
+     *
+     * @param descriptor
+     * @param func
+     * @private
+     */
+    function _register(descriptor, func) {
+      _repository.push(mk_descriptor(descriptor, func))
+    };
 
-  /**
-   * Check input by RPC spec.
-   *
-   * @param input
-   * @returns {Promise}
-   * @private
-   */
-  var _rpc_spec_check = function (input) {
-    return new Promise(function (resolve, reject) {
-      var rpc_input_checker = PropTypes.shape({
-        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+
+    /**
+     * Check input by RPC spec.
+     *
+     * @param input
+     * @returns {Promise}
+     * @private
+     */
+    const rpc_input_checker = PropTypes.shape({
+        id: PropTypes.string.isRequiredNotNull,
         jsonrpc: PropTypes.oneOf([utils.JSON_RPC_VERSION]).isRequiredNotNull,  // 2.0
         method: PropTypes.string.isRequiredNotNull,
-        params: PropTypes.oneOfType([PropTypes.object, PropTypes.array])
-      }).isRequiredNotNull;
-      var rpc_input_check_result = _catch_errors(rpc_input_checker)({input: input}, 'input', 'JSONRPC.input', 'JSONRPC.input');
-      if (rpc_input_check_result !== null) {
-        return reject(new JsonRpcError(-32600, "Invalid Request", rpc_input_check_result));
-      }
-      return resolve(input);
-    });
-  };
-
-  /**
-   * Lookup RPC function by `namespace`
-   *
-   * @param namespace
-   * @param params
-   * @returns {*}
-   * @private
-   */
-  var _lookup = function (namespace) {
-    var __lookup = _catch_errors(function (namespace) {
-      for (var i = 0; i < _repository.length; i++) {
-        var _rpc_method = _repository[i];
-        if (namespace === _rpc_method.namespace) {
-          return _rpc_method;
+        params: PropTypes.array
+    }).isRequiredNotNull;
+    function _rpc_spec_check(input) {
+        let rpc_input_check_result = rpc_input_checker({input: input}, 'input', 'JSONRPC.input', 'JSONRPC.input');
+        if (rpc_input_check_result !== null) {
+            throw (new JsonRpcError(-32600, "Invalid Request", rpc_input_check_result));
         }
-      }
-      return new JsonRpcError(-32601, "Method not found", JSON.stringify(namespace))
-    });
-    //
-    return new Promise(function (resolve, reject) {
-      var rpc_method = __lookup(namespace);
-      if (rpc_method instanceof JsonRpcError) {
-        // console.error(-32603, "Internal JSON-RPC error lookup method", rpc_method);
-        return reject(rpc_method);
-      }
-      if (rpc_method instanceof Error) {
-        // console.error(-32603, "Internal JSON-RPC error lookup method", rpc_method);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error lookup method", rpc_method));
-      }
-      return resolve(rpc_method);
-    });
-  };
-
-  /**
-   * Convert(check & inject) input parameters to invokable parameters.
-   *
-   * @param input_params
-   * @param injectable
-   * @param rpc_method
-   * @returns {Promise}
-   * @private
-   */
-  var _convert = function (input_params, injectable, rpc_method) {
-    var __convert = _catch_errors(function (injectableContext, params, rpc_method) {
-      var _typeof_params = utils.getPropType(params);
-      var paramsLength = _typeof_params === 'array' ? params.length : Object.keys(params || {}).length;
-      //
-      if (_typeof_params === 'object' && !rpc_method.canNameableCall) {  // named call, but the RPC not support.
-        return new JsonRpcError(-32602, "Invalid params", 'Invalid invoke style `named style` suppled to `' + rpc_method.namespace + '`, excepted `positional style`.');
-      }
-      //
-      if (_typeof_params === 'array' && paramsLength !== rpc_method.indexedParams.length) {   // parameter count not match
-        return new JsonRpcError(-32602, "Invalid params", 'Invalid parameters count. ' + ('`' + paramsLength + '` parameter(s) supplied to `' + rpc_method.namespace + '`, expected ') + ('`' + rpc_method.indexedParams.length + '` parameter(s).'));
-      }
-      // Copy & Inject parameters
-      var convertedParams = new Array(rpc_method.paramsCount);
-      // process injectable parameters
-      for (var i = 0; i < rpc_method.injectableParams.length; i++) {
-        var injectableParam = rpc_method.injectableParams[i];
-        var propType = injectableParam[0];
-        // injectable parameter must defined in injectableContext
-        var _inj_prop_type_check_result = PropTypes.any.isRequired(injectableContext, propType.injectable, 'injectableContext', 'injectableContext[' + propType.injectable + ']');
-        if (_inj_prop_type_check_result instanceof TypeError) {
-          return new JsonRpcError(-32602, "Invalid params", _inj_prop_type_check_result);
-        }
-        convertedParams[injectableParam[1]] = injectableContext[propType.injectable];
-      }
-      if (_typeof_params === 'array') {
-        for (var j = 0; j < rpc_method.indexedParams.length; j++) {
-          var indexedParam = rpc_method.indexedParams[j];
-          var indexedPropType = indexedParam[0];
-          var _indexed_prop_type_check_result = indexedPropType(params, j, rpc_method.namespace, 'params[' + j + ']');
-          if (_indexed_prop_type_check_result instanceof TypeError) {   // not matched.
-            return new JsonRpcError(-32602, "Invalid params", _indexed_prop_type_check_result);
-          }
-          convertedParams[indexedParam[1]] = params[j];
-        }
-      } else if (_typeof_params === 'object') {
-        for (var k = 0; k < rpc_method.namedParams.length; k++) {
-          var namedParam = rpc_method.namedParams[k];
-          var namedPropType = namedParam[0];
-          var _named_prop_type_check_result = namedPropType(params, namedPropType.typeProps.naming, rpc_method.namespace, 'params[' + JSON.stringify(namedPropType.typeProps.naming) + ']');
-          if (_named_prop_type_check_result instanceof TypeError) {   // not matched.
-            return new JsonRpcError(-32602, "Invalid params", _named_prop_type_check_result);
-          }
-          convertedParams[namedParam[1]] = params[namedParam[0].typeProps.naming];
-        }
-      }
-
-      return convertedParams;
-    });
-    //
-    return new Promise(function (resolve, reject) {
-      var params = __convert(injectable, input_params, rpc_method);
-      if (params instanceof JsonRpcError) {
-        return reject(params)
-      }
-      if (params instanceof Error) {
-        console.error(-32603, "Internal JSON-RPC error when convert params", params);
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when convert params", params));
-      }
-      return resolve(params);
-    });
-  };
-
-  /**
-   *
-   *
-   * @param rpc_method
-   * @param params
-   * @private
-   */
-  var ___invoke = function (rpc_method, params, invoke_error_trans) {
-    return new Promise(function (resolve, reject) {
-      // apply the function 实际调用 引发的错误. 未知的错误.
-      //    utils.promisify(rpc_method.func, rpc_method).apply(null, params);
-      rpc_method.func.apply(rpc_method, params).then(resolve).catch(function (err) {
-        process.env.NODE_ENV !== 'production' && console.error("Internal JSON-RPC error when invoke method", err.message, err.stack);
-        var transformed_error = invoke_error_trans && invoke_error_trans(err);
-        if (transformed_error && transformed_error instanceof JsonRpcError) {
-          return reject(transformed_error);
-        }
-        return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when invoke method", err));
-      });
-    })
-  };
-
-  /**
-   *
-   *
-   * @param rpc_method
-   * @param input
-   * @param injectable
-   * @private
-   */
-  var _perm_check = function (rpc_method, input, injectable) {
-    return new Promise(function (resolve, reject) {
-      if (injectable && typeof injectable.perm_check === 'function' && rpc_method.grantTo) {
-        var _promisifed = utils.promisify(injectable.perm_check, rpc_method);
-        _promisifed(rpc_method.grantTo, input).then(function (check_result) {
-          if (check_result === true) {
-            return resolve(rpc_method);
-          } else {
-            if (check_result instanceof JsonRpcError) {
-              return reject(check_result);
-            } else {
-              return reject(new JsonRpcError(-32604, "Permission denied", "one of " + JSON.stringify(rpc_method.grantTo) + " is necessary."));
+    }
+  
+    /**
+     * Lookup RPC function by `namespace`
+     *
+     * @param namespace
+     * @param params
+     * @returns {*}
+     * @private
+     */
+    function _lookup(method) {
+        for (let i = 0; i < _repository.length; i++) {
+            if (method === _repository[i].namespace) {
+              return _repository[i];
             }
-          }
-        }).catch(function (err) {
-          if (err instanceof JsonRpcError) {
-            return reject(err);
-          } else {
-            return reject(new JsonRpcError(-32603, "Internal JSON-RPC error when perm_check method", err));
-          }
-        });
-      } else {
-        return resolve(rpc_method); // perm_check or grantTo undefined, do not perm_check.
-      }
-    });
-  };
+        }
+        throw new JsonRpcError(-32601, "Method not found", JSON.stringify(method));
+    }
 
-  /**
-   *
-   * @param input
-   * @param injectable
-   * @private
-   */
-  var __invoke = function (input, injectable, invoke_error_trans) {
-    return __wrap_output(input, _rpc_spec_check(input).then(function (input) {
-      var _next = _lookup(input.method).then(function (rpc_method) {
-        return _perm_check(rpc_method, input, injectable).then(function (rpc_method) {
-          return _convert(input.params, injectable, rpc_method).then(function (params) {
-            return ___invoke(rpc_method, params, invoke_error_trans).then(function (result) {
-              return {
-                jsonrpc: utils.JSON_RPC_VERSION,
-                id: input.id,
-                result: result
+    /**
+     * Convert(check & inject) input parameters to invokable parameters.
+     *
+     * @param input_params
+     * @param injectable
+     * @param rpc_method
+     * @returns {Promise}
+     * @private
+     */
+    async function _convert(rpc_method, params, injections) {
+        let {namespace, paramsCount, injectableParams, indexedParams} = rpc_method;
+        if (params == null) params = [];
+        if (!Array.isArray(params)) {
+            throw new JsonRpcError(-32602, "Invalid params", "The parameters must be an array.");
+        }
+        if (params.length !== indexedParams.length) {   // parameter count not match
+            throw new JsonRpcError(-32602, "Invalid params", 
+                    'Invalid parameters count. ' 
+                    + ('`' + params.length + '` parameter(s) supplied to `' + rpc_method.namespace + '`, expected ') 
+                    + ('`' + indexedParams.length + '` parameter(s).'));
+        }
+        // Copy & Inject parameters
+        let convertedParams = new Array(paramsCount);
+        // process injectable parameters
+        for (let i = 0; i < injectableParams.length; i++) {
+            let [injectableType, paramIdx] = injectableParams[i];
+            let {typeProps: {type, injectable}} = injectableType;
+            if (!injections.hasOwnProperty(injectable)) {
+                throw new JsonRpcError(-32602, "Invalid params", "invalid injectable.[" + injectable + "]");
+            }
+            let injection = injections[injectable];
+            if (typeof injection === "function") {
+                convertedParams[paramIdx] = await injections[injectable]();
+            } else {
+                convertedParams[paramIdx] = injections[injectable];
+            }
+        }
+        // 
+        for (let j = 0; j < indexedParams.length; j++) {
+            let [paramType, paramIdx] = indexedParams[j];
+            let validation_result = paramType(params, j, namespace, 'params[' + j + ']');
+            if (validation_result instanceof TypeError) {   // not matched.
+              throw new JsonRpcError(-32602, "Invalid params", validation_result);
+            }
+            convertedParams[paramIdx] = params[j];
+        }
+        return convertedParams;
+    }
+
+    /**
+     *
+     *
+     * @param rpc_method
+     * @param input
+     * @param injections
+     * @private
+     */
+    async function _perm_check(rpc_method, injections) {
+        if (!(injections && typeof injections["perm_check"] === 'function' && rpc_method["grantTo"])) {
+            return rpc_method;
+        }
+        let {namespace, grantTo} = rpc_method;
+        let {perm_check} = injections;
+        let check_result = await perm_check(grantTo, rpc_method);
+        if (check_result === true) {
+            return rpc_method;
+        } else {
+            if (check_result instanceof JsonRpcError) {
+                throw(check_result);
+            } else {
+                throw(new JsonRpcError(-32604, "Permission denied", 
+                    "one of " + JSON.stringify(grantTo) + " is necessary for [" + namespace + "]."));
+            }
+        }
+    }
+
+    /**
+     * resolve(undefined) when notification call.
+     * resolve or reject `spec` value when normal call.
+     *
+     * @param input
+     * @param injections
+     * @private
+     */
+    async function _invoke(input, injections) {
+        try {
+            _rpc_spec_check(input);
+            // 
+            let {id, jsonrpc, method, params} = input;
+            try {
+                let rpc_method = _lookup(method);
+                _perm_check(rpc_method, injections);
+                let convertedParams = await _convert(rpc_method, params, injections);
+                let result = await rpc_method.func.apply(rpc_method, convertedParams);
+                return {id, jsonrpc, result};
                 // TODO Difference from SPEC, As SPEC, MUST return something(!undefined) when invoked.
                 //      but return undefined mean a void call, return null mean the RPC return null.
-              }
-            });
-          });
+            } catch (error) {
+                console.error(error, error instanceof JsonRpcError);
+                if (error instanceof JsonRpcError) {
+                    return {id, jsonrpc, error: {
+                        code: error['code'],
+                        message: error['message'],
+                        data: process.env.NODE_ENV !== 'production' ? error.data : undefined
+                    }}
+                }
+                process.env.NODE_ENV !== 'production' && console.error("Internal JSON-RPC error when invoke method", error.message, error.stack);
+                return {id, jsonrpc, error: {
+                    code: -32603,
+                    message: "Internal error",
+                    data: process.env.NODE_ENV !== 'production' ? error.message : undefined
+                }};
+            }
+        } catch (error) {
+            if (error instanceof JsonRpcError) {
+                return {error: {
+                    code: error['code'],
+                    message: error['message'],
+                    data: process.env.NODE_ENV !== 'production' ? error.data : undefined
+                }};
+            }
+            process.env.NODE_ENV !== 'production' && console.error("Internal JSON-RPC error when invoke method", error.message, error.stack);
+            return {error: {
+                code: -32603,
+                message: "Internal error",
+                data: process.env.NODE_ENV !== 'production' ? error.message : undefined
+            }};
+        }
+    }
+
+    // 
+    _register({
+        namespace: 'system.listMethods',
+        doc: 'This method returns an array of strings, one for each method supported by the RPC server.',
+        sign: [PropTypes.arrayOf(PropTypes.string)]
+    }, function system_listMethods(has_prem) {
+        return _repository.map(function (item, idx) {
+            return item.namespace;
         });
-      });
-      //
-      if (input.id === undefined || input.id === null) {
-        // when input.id === undefined or null, that is a notification call.
-        // ignore the result(output), resolve direction(not wait invoke done).
-      } else {
-        return _next;
-      }
-    }));
-  };
-
-  /**
-   * Invoke batch RPC call.
-   *
-   * @param inputs
-   * @param injectable
-   * @private
-   */
-  var __invoke_batch = function (inputs, injectable, invoke_error_trans) {
-    var outputs = [];
-    if (inputs.length === 0) {
-      return __wrap_output(undefined,
-        Promise.reject(new JsonRpcError(-32600, "Invalid Request", "RPC call with an empty array.")));
-    }
-    return utils.promiseEach(inputs, function (input, idx) {
-      return __invoke(input, injectable, invoke_error_trans).then(function (output) {
-        output !== undefined && outputs.push(output);
-      })
-    }).then(function () {
-      if (outputs.length !== 0) {
-        return outputs;
-      }
     });
-  };
 
-  /**
-   * Wrap RPC result to SPEC's output.
-   *
-   * catch all error, convert to output.
-   *
-   * @param input
-   * @param thenable
-   * @private
-   */
-  var __wrap_output = function (input, thenable) {
-    return new Promise(function (resolve, reject) {
-      thenable.then(function (output) {
-        return resolve(output)
-      }).catch(function (error) {
-        return resolve({
-          jsonrpc: utils.JSON_RPC_VERSION,
-          id: input && input.id || null,
-          error: error
-        })
-      })
-    })
-  };
+    /**
+     * Takes an array of RPC calls encoded as structs of the form:
+     *    `{'methodName': string, 'params': array}`.
+     * For JSON-RPC multicall, signatures is an array of regular method call
+     * structs, and result is an array of return structures.
+     */
+    // var system_multicall = function () {
+    // };
+    // _register({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
 
-  /**
-   * resolve(undefined) when notification call.
-   * resolve or reject `spec` value when normal call.
-   *
-   * @param input
-   * @param injectable
-   * @private
-   */
-  var _invoke = function (input, injectable, invoke_error_trans) {
-    if (Array.isArray(input)) {
-      return __invoke_batch(input, injectable, invoke_error_trans);
-    } else {
-      return __invoke(input, injectable, invoke_error_trans);
-    }
-  };
+    /**
 
-  /**
-   * This method returns an array of strings, one for each (non-system) method supported by the RPC server.
-   */
-  var system_listMethods = function (has_prem) {
-    return _repository.map(function (item, idx) {
-      return item.namespace;
+     */
+    _register({
+        namespace: 'system.methodSignature',
+        doc: "This method takes one parameter, the name of a method implemented by the RPC server.\n"
+           + "\n"
+           + "It returns an array of possible signatures for this method.\n"
+           + "A signature is an array of types.\n"
+           + "The first of these types is the return type of the method, the rest are parameters.\n",
+        sign: [PropTypes.arrayOf(PropTypes.string), PropTypes.string.isRequiredNotNull]
+    }, function system_methodSignature(namespace) {
+        var idx = _repository.findIndex(function (item, idx) {
+            return (namespace === item.namespace)
+        });
+        if (idx !== -1) {
+            var descriptor = _repository[idx];
+            return descriptor.paramsSignature.map(function(s) {
+                if (s.toJSON) {
+                    return s.toJSON();
+                }
+                return s;
+            });
+        }
+        throw new Error('Method not found.[' + namespace + ']');
     });
-  };
-  _register({
-    namespace: 'system.listMethods',
-    doc: 'This method returns an array of strings, one for each method supported by the RPC server.',
-    sign: [PropTypes.array]
-  }, system_listMethods);
 
-  /**
-   * Takes an array of RPC calls encoded as structs of the form:
-   *    `{'methodName': string, 'params': array}`.
-   * For JSON-RPC multicall, signatures is an array of regular method call
-   * structs, and result is an array of return structures.
-   */
-  // var system_multicall = function () {
-  // };
-  // _register({namespace: 'system.multicall', doc: '', sign: []}, system_multicall);
-
-  /**
-   * This method takes one parameter, the name of a method implemented by the RPC server.
-   *
-   * It returns an array of possible signatures for this method.
-   * A signature is an array of types.
-   * The first of these types is the return type of the method, the rest are parameters.
-   */
-  var system_methodSignature = function (namespace) {
-    var idx = _repository.findIndex(function (item, idx) {
-      return (namespace === item.namespace)
+    _register({
+        namespace: 'system.methodHelp',
+        doc: 'This method takes one parameter, the name of a method implemented by the RPC server.\n\n'
+           + 'It returns a documentation string describing the  use of that method.\n'
+           + 'If no such string is available, an empty string is returned.\n'
+           + 'The documentation string may contain HTML markup.\n',
+        sign: [PropTypes.string, PropTypes.string.isRequiredNotNull]
+    }, async function system_methodHelp(namespace) {
+        var idx = _repository.findIndex(function (item, idx) {
+          return (namespace === item.namespace)
+        });
+        if (idx !== -1) {
+            var descriptor = _repository[idx];
+            var doc = _repository[idx].doc;
+            if (typeof(doc) === 'function') {
+                return await doc();   // 由于 文本 可能比较大, 可以通过(异步)`读取`函数获得
+            } else {
+                return doc === undefined ? null : doc;
+            }
+        }
+        throw new Error('Method not found.[' + namespace + ']');
     });
-    if (idx !== -1) {
-      var descriptor = _repository[idx];
-      return descriptor.paramsSignature.map(function(s) {
-          if (s.toJSON) {
-              return s.toJSON();
-          }
-          return s;
-      });
-    }
-    throw new Error('Method not found.[' + namespace + ']');
-  };
-  _register({
-    namespace: 'system.methodSignature',
-    doc: '',
-    sign: [PropTypes.arrayOf(PropTypes.string), PropTypes.string.isRequiredNotNull]
-  }, system_methodSignature);
 
-  /**
-   * This method takes one parameter, the name of a method implemented by the RPC server.
-   *
-   * It returns a documentation string describing the  use of that method.
-   * If no such string is available, an empty string is returned.
-   * The documentation string may contain HTML markup.
-   */
-  var system_methodHelp = function (namespace) {
-    var idx = _repository.findIndex(function (item, idx) {
-      return (namespace === item.namespace)
-    });
-    if (idx !== -1) {
-      var descriptor = _repository[idx];
-      var doc = _repository[idx].doc;
-      if (typeof(doc) === 'function') {
-        return doc();   // 由于 文本 可能比较大, 可以通过(异步)`读取`函数获得
-      } else {
-        return doc === undefined ? null : doc;
-      }
-    }
-    throw new Error('Method not found.[' + namespace + ']');
-  };
-  _register({
-    namespace: 'system.methodHelp',
-    doc: 'This method takes one parameter, the name of a method implemented by the RPC server.\n\n' +
-    'It returns a documentation string describing the  use of that method.\n' +
-    'If no such string is available, an empty string is returned.\n' +
-    'The documentation string may contain HTML markup.\n',
-    sign: [PropTypes.string, PropTypes.string.isRequiredNotNull]
-  }, system_methodHelp);
-
-  //
-  return {
-    register: _register,
-    invoke: _invoke
-  };
+    //
+    return {
+      register: _register,
+      invoke: _invoke
+    };
 
 };
